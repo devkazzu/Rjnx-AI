@@ -27,11 +27,13 @@ jobs:
           gradle-version: '8.7'
 
       - name: Build Debug APK
-        run: gradle assembleDebug --stacktrace
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: gradle assembleDebug --stacktrace -POPENROUTER_API_KEY="$OPENROUTER_API_KEY"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: RJNX-AI-debug-apk
+          name: RJNX-AI-v1.4-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
