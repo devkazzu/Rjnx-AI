@@ -11,6 +11,13 @@ import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.util.Log
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -25,6 +32,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private lateinit var mic: Button
     private lateinit var tts: TextToSpeech
     private var recognizer: SpeechRecognizer? = null
+    private val apiKey = BuildConfig.OPENAI_API_KEY
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -121,9 +129,82 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 reply("Hello! I'm RJNX AI. How can I help?")
             }
             else -> {
-                reply("I can handle phone shortcuts, web search, notes and voice commands in V1. AI chat API will be connected next.")
+                askAI(raw)
             }
         }
+    }
+
+
+    private fun askAI(question: String) {
+        if (apiKey.isBlank()) {
+            reply("AI API key is not configured yet.")
+            return
+        }
+
+        reply("Thinking…")
+
+        Thread {
+            try {
+                val url = URL("https://api.openai.com/v1/responses")
+                val connection = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    setRequestProperty("Authorization", "Bearer $apiKey")
+                    setRequestProperty("Content-Type", "application/json")
+                    connectTimeout = 15000
+                    readTimeout = 30000
+                    doOutput = true
+                }
+
+                val body = JSONObject().apply {
+                    put("model", "gpt-5-mini")
+                    put("input", JSONArray().put(
+                        JSONObject().apply {
+                            put("role", "user")
+                            put("content", question)
+                        }
+                    ))
+                }
+
+                connection.outputStream.use { it.write(body.toString().toByteArray()) }
+
+                val code = connection.responseCode
+                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+                val response = BufferedReader(InputStreamReader(stream)).use { it.readText() }
+
+                if (code !in 200..299) {
+                    Log.e("RJNX_AI", "HTTP $code: $response")
+                    runOnUiThread { reply("AI request failed ($code). Check your API key or connection.") }
+                    return@Thread
+                }
+
+                val json = JSONObject(response)
+                val output = json.optJSONArray("output")
+                var answer = ""
+
+                if (output != null) {
+                    for (i in 0 until output.length()) {
+                        val item = output.optJSONObject(i) ?: continue
+                        val content = item.optJSONArray("content") ?: continue
+                        for (j in 0 until content.length()) {
+                            val part = content.optJSONObject(j) ?: continue
+                            if (part.optString("type") == "output_text") {
+                                answer += part.optString("text")
+                            }
+                        }
+                    }
+                }
+
+                if (answer.isBlank()) answer = "I couldn't generate a response."
+
+                runOnUiThread {
+                    // Remove the temporary "Thinking…" message by simply adding the final answer.
+                    reply(answer)
+                }
+            } catch (e: Exception) {
+                Log.e("RJNX_AI", "AI request error", e)
+                runOnUiThread { reply("Couldn't reach the AI service. Check your internet connection.") }
+            }
+        }.start()
     }
 
     private fun openUrl(url: String) {
