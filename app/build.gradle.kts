@@ -3,7 +3,9 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-android {
+android {kotlin {
+    jvmToolchain(17)
+}
     namespace = "com.rjnx.ai"
     compileSdk = 35
 
