@@ -18,7 +18,7 @@ android {
         versionCode = 1
         versionName = "1.0"
         // Put your API key in ~/.gradle/gradle.properties as OPENAI_API_KEY=...
-        buildConfigField("String", "OPENAI_API_KEY", ""${project.findProperty("OPENAI_API_KEY") ?: ""}"")
+        buildConfigField("String", "OPENAI_API_KEY", "\"${project.findProperty("OPENAI_API_KEY") ?: ""}\"")
     }
 }
 
