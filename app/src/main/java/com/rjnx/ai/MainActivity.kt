@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.provider.AlarmClock
+import android.provider.ContactsContract
 import android.widget.Toast
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -176,13 +177,61 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     private fun makeCall(raw: String) {
         val target = raw.replace(Regex("(?i)^.*?call\\s+"), "").trim()
-        val number = target.replace(Regex("[^0-9+]"), "")
-        if (number.isBlank()) {
-            reply("Tell me the phone number to call.")
+        if (target.isBlank()) {
+            reply("Tell me who you want to call.")
             return
         }
-        startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))
-        reply("Opening the dialer for $number.")
+
+        val number = findContactNumber(target)
+        if (number != null) {
+            startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))
+            reply("Opening the dialer for $target.")
+        } else {
+            val directNumber = target.replace(Regex("[^0-9+]"), "")
+            if (directNumber.length >= 7) {
+                startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$directNumber")))
+                reply("Opening the dialer.")
+            } else {
+                reply("I couldn't find $target in your contacts.")
+            }
+        }
+    }
+
+    private fun findContactNumber(name: String): String? {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.READ_CONTACTS),
+                20
+            )
+            reply("Please allow contacts permission, then ask me again.")
+            return null
+        }
+
+        val projection = arrayOf(
+            ContactsContract.CommonDataKinds.Phone.NUMBER,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
+        )
+
+        val selection =
+            "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?"
+        val args = arrayOf("%$name%")
+
+        contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            projection,
+            selection,
+            args,
+            "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val numberIndex =
+                    cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                if (numberIndex >= 0) return cursor.getString(numberIndex)
+            }
+        }
+        return null
     }
 
     private fun setAlarmFromCommand(raw: String) {
