@@ -8,6 +8,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.provider.AlarmClock
+import android.widget.Toast
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
@@ -120,6 +122,42 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 })
                 reply("Opening Gallery.")
             }
+            command.contains("call ") || command.startsWith("call") -> {
+                makeCall(raw)
+            }
+            command.contains("alarm") || command.contains("wake me") -> {
+                setAlarmFromCommand(raw)
+            }
+            command.contains("browser") || command.contains("chrome") -> {
+                openUrl("https://www.google.com")
+                reply("Opening the browser.")
+            }
+            command.contains("note") || command.contains("remember") -> {
+                val note = raw.replace(Regex("(?i)^.*?(note|remember)"), "").trim()
+                getPreferences(MODE_PRIVATE).edit().putString("last_note", note).apply()
+                reply("Saved your note.")
+            }
+            command.contains("hello") || command.matches(Regex(".*\\bhi\\b.*")) -> {
+                reply("Hello! I'm RJNX AI. How can I help?")
+            }
+            else -> askAI(raw)
+        }
+            command.contains("google") || command.contains("search") -> {
+                val q = raw.replace(Regex("(?i)search|google"), "").trim()
+                openUrl("https://www.google.com/search?q=${Uri.encode(q)}")
+                reply("Searching the web.")
+            }
+            command.contains("settings") -> {
+                startActivity(Intent(Settings.ACTION_SETTINGS))
+                reply("Opening Settings.")
+            }
+            command.contains("gallery") || command.contains("photos") -> {
+                startActivity(Intent(Intent.ACTION_VIEW).apply {
+                    type = "image/*"
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                })
+                reply("Opening Gallery.")
+            }
             command.contains("note") -> {
                 val note = raw.substringAfter("note", raw, "").trim()
                 getPreferences(MODE_PRIVATE).edit()
@@ -135,6 +173,39 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+
+    private fun makeCall(raw: String) {
+        val target = raw.replace(Regex("(?i)^.*?call\\s+"), "").trim()
+        val number = target.replace(Regex("[^0-9+]"), "")
+        if (number.isBlank()) {
+            reply("Tell me the phone number to call.")
+            return
+        }
+        startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))
+        reply("Opening the dialer for $number.")
+    }
+
+    private fun setAlarmFromCommand(raw: String) {
+        val match = Regex("""(?i)\b([01]?\d|2[0-3])[:.]([0-5]\d)\b""").find(raw)
+        if (match == null) {
+            reply("Say the alarm time, for example: set alarm 7:30.")
+            return
+        }
+        val hour = match.groupValues[1].toInt()
+        val minute = match.groupValues[2].toInt()
+        val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+            putExtra(AlarmClock.EXTRA_HOUR, hour)
+            putExtra(AlarmClock.EXTRA_MINUTES, minute)
+            putExtra(AlarmClock.EXTRA_MESSAGE, "RJNX AI Alarm")
+        }
+        try {
+            startActivity(intent)
+            reply("Opening alarm setup for ${String.format("%02d:%02d", hour, minute)}.")
+        } catch (e: Exception) {
+            Toast.makeText(this, "No alarm app available", Toast.LENGTH_SHORT).show()
+            reply("I couldn't open the alarm app.")
+        }
+    }
 
     private fun askAI(question: String) {
         if (apiKey.isBlank()) {
