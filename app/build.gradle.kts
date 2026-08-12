@@ -3,11 +3,14 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-android {kotlin {
-    jvmToolchain(17)
-}
+android {
     namespace = "com.rjnx.ai"
     compileSdk = 35
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
 
     buildFeatures {
         buildConfig = true
@@ -19,9 +22,17 @@ android {kotlin {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-        // Put your API key in ~/.gradle/gradle.properties as OPENAI_API_KEY=...
-        buildConfigField("String", "OPENAI_API_KEY", "\"${project.findProperty("OPENAI_API_KEY") ?: ""}\"")
+
+        buildConfigField(
+            "String",
+            "OPENAI_API_KEY",
+            "\"${project.findProperty("OPENAI_API_KEY") ?: ""}\""
+        )
     }
+}
+
+kotlin {
+    jvmToolchain(17)
 }
 
 dependencies {
