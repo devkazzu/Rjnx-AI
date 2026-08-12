@@ -33,6 +33,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private lateinit var tts: TextToSpeech
     private var recognizer: SpeechRecognizer? = null
     private val apiKey = BuildConfig.OPENAI_API_KEY
+    private val conversation = mutableListOf<Pair<String, String>>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -141,7 +142,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             return
         }
 
-        reply("Thinking…")
+        addAssistant("Thinking…")
 
         Thread {
             try {
@@ -155,14 +156,28 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     doOutput = true
                 }
 
+                val input = JSONArray()
+                input.put(JSONObject().apply {
+                    put("role", "developer")
+                    put("content", "You are RJNX AI, a concise and helpful Android voice assistant. Answer naturally and clearly.")
+                })
+
+                val recent = conversation.takeLast(10)
+                for ((role, text) in recent) {
+                    input.put(JSONObject().apply {
+                        put("role", role)
+                        put("content", text)
+                    })
+                }
+
+                input.put(JSONObject().apply {
+                    put("role", "user")
+                    put("content", question)
+                })
+
                 val body = JSONObject().apply {
                     put("model", "gpt-5-mini")
-                    put("input", JSONArray().put(
-                        JSONObject().apply {
-                            put("role", "user")
-                            put("content", question)
-                        }
-                    ))
+                    put("input", input)
                 }
 
                 connection.outputStream.use { it.write(body.toString().toByteArray()) }
@@ -196,8 +211,13 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
                 if (answer.isBlank()) answer = "I couldn't generate a response."
 
+                synchronized(conversation) {
+                    conversation.add("user" to question)
+                    conversation.add("assistant" to answer)
+                    while (conversation.size > 20) conversation.removeAt(0)
+                }
+
                 runOnUiThread {
-                    // Remove the temporary "Thinking…" message by simply adding the final answer.
                     reply(answer)
                 }
             } catch (e: Exception) {
@@ -215,8 +235,12 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         chat.append("\n\nYou: $text")
     }
 
-    private fun reply(text: String) {
+    private fun addAssistant(text: String) {
         chat.append("\n\nRJNX: $text")
+    }
+
+    private fun reply(text: String) {
+        addAssistant(text)
         if (::tts.isInitialized) tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "rjnx")
     }
 
