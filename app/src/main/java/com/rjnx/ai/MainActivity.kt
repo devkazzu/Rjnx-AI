@@ -17,6 +17,7 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import org.json.JSONArray
 import org.json.JSONObject
@@ -44,6 +45,23 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private val apiKey = BuildConfig.OPENROUTER_API_KEY
     private val conversation = mutableListOf<Pair<String, String>>()
 
+    private val callPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            val number = pendingCallNumber
+            val name = pendingCallName ?: "contact"
+            pendingCallNumber = null
+            pendingCallName = null
+
+            if (granted && number != null) {
+                placeCall(number, name)
+            } else {
+                reply("Phone permission was denied, so I couldn't call $name.")
+            }
+        }
+
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -58,32 +76,6 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         mic.setOnClickListener { startListening() }
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 10)
-        }
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
-        when (requestCode) {
-            REQUEST_CALL_PHONE -> {
-                val number = pendingCallNumber
-                val name = pendingCallName ?: "contact"
-                pendingCallNumber = null
-                pendingCallName = null
-
-                if (grantResults.isNotEmpty() &&
-                    grantResults[0] == PackageManager.PERMISSION_GRANTED &&
-                    number != null
-                ) {
-                    makeDirectCall(number, name)
-                } else {
-                    reply("Phone permission was denied, so I couldn't call $name.")
-                }
-            }
         }
     }
 
@@ -295,12 +287,23 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         ) {
             pendingCallNumber = number
             pendingCallName = target
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.CALL_PHONE),
-                REQUEST_CALL_PHONE
-            )
+            callPermissionLauncher.launch(Manifest.permission.CALL_PHONE)
             reply("Allow phone permission and I'll call $target.")
+            return
+        }
+
+        placeCall(number, target)
+    }
+
+    private fun placeCall(number: String, target: String) {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.CALL_PHONE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingCallNumber = number
+            pendingCallName = target
+            callPermissionLauncher.launch(Manifest.permission.CALL_PHONE)
             return
         }
 
@@ -405,11 +408,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     "android.permission.POST_NOTIFICATIONS"
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
-                ActivityCompat.requestPermissions(
-                    this,
-                    arrayOf("android.permission.POST_NOTIFICATIONS"),
-                    REQUEST_NOTIFICATIONS
-                )
+                notificationPermissionLauncher.launch("android.permission.POST_NOTIFICATIONS")
             }
 
             reply("Alarm set for ${String.format("%02d:%02d", hour, minute)}.")
