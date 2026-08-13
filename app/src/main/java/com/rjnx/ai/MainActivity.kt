@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private lateinit var mic: Button
     private lateinit var tts: TextToSpeech
     private var recognizer: SpeechRecognizer? = null
-    private val apiKey = BuildConfig.OPENAI_API_KEY
+    private val apiKey = private val apiKey = BuildConfig.OPENROUTER_API_KEY
     private val conversation = mutableListOf<Pair<String, String>>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
