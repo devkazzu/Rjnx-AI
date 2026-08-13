@@ -64,6 +64,10 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // V3.0 Phase 1: start the persistent RJNX background service.
+        startRjnxVoiceService()
+
         setContentView(R.layout.activity_main)
         input = findViewById(R.id.input)
         chat = findViewById(R.id.chat)
@@ -76,6 +80,19 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         mic.setOnClickListener { startListening() }
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 10)
+        }
+    }
+
+    private fun startRjnxVoiceService() {
+        try {
+            val serviceIntent = Intent(this, RjnxVoiceService::class.java)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+        } catch (_: Exception) {
+            // The foreground Activity remains usable if the service cannot start.
         }
     }
 
