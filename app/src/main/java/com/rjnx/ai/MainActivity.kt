@@ -167,7 +167,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             command.contains("notes delete") -> clearNotes()
 
             command.contains("youtube") -> {
-                openInstalledAppByName("youtube") || run {
+                if (!openInstalledAppByName("youtube")) {
                     openUrl("https://www.youtube.com")
                     reply("Opening YouTube.")
                 }
