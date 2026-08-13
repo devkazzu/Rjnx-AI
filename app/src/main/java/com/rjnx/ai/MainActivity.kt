@@ -60,15 +60,29 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         }
 
     private val notificationPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            // The service can still be started when notification permission is
+            // denied, but Android may hide its notification from the drawer.
+            startRjnxVoiceService()
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // V3.0 Phase 1: start the persistent RJNX background service.
-        startRjnxVoiceService()
-
         setContentView(R.layout.activity_main)
+
+        // Android 13+: request notification permission before starting the
+        // foreground service so its persistent notification can be shown.
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            startRjnxVoiceService()
+        }
         input = findViewById(R.id.input)
         chat = findViewById(R.id.chat)
         mic = findViewById(R.id.mic)
