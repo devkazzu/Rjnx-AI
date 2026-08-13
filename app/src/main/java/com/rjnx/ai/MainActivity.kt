@@ -61,18 +61,19 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            // The service can still be started when notification permission is
-            // denied, but Android may hide its notification from the drawer.
-            startRjnxVoiceService()
+            startRjnxVoiceServiceAfterPermissions()
         }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    private val audioPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                startRjnxVoiceServiceAfterPermissions()
+            } else {
+                reply("Microphone permission is needed for Hey Mio.")
+            }
+        }
 
-        setContentView(R.layout.activity_main)
-
-        // Android 13+: request notification permission before starting the
-        // foreground service so its persistent notification can be shown.
+    private fun startRjnxVoiceServiceAfterPermissions() {
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
             ActivityCompat.checkSelfPermission(
                 this,
@@ -82,6 +83,26 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
             startRjnxVoiceService()
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        setContentView(R.layout.activity_main)
+
+        handleWakeCommand(intent)
+
+        // Phase 2 needs microphone permission before the background
+        // speech recognizer can start.
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        } else {
+            startRjnxVoiceServiceAfterPermissions()
         }
         input = findViewById(R.id.input)
         chat = findViewById(R.id.chat)
@@ -94,6 +115,24 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         mic.setOnClickListener { startListening() }
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 10)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent != null) handleWakeCommand(intent)
+    }
+
+    private fun handleWakeCommand(intent: Intent) {
+        if (!intent.getBooleanExtra("MIO_WAKE", false)) return
+
+        val command = intent.getStringExtra("MIO_COMMAND").orEmpty().trim()
+        if (command.isNotBlank()) {
+            handleCommand(command)
+        } else {
+            reply("Yes, I'm listening.")
+            startListening()
         }
     }
 
