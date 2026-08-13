@@ -64,14 +64,6 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             startRjnxVoiceServiceAfterPermissions()
         }
 
-    private val audioPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) {
-                startRjnxVoiceServiceAfterPermissions()
-            } else {
-                reply("Microphone permission is needed for Hey Mio.")
-            }
-        }
 
     private fun startRjnxVoiceServiceAfterPermissions() {
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
@@ -91,19 +83,12 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
         setContentView(R.layout.activity_main)
 
-        handleWakeCommand(intent)
+        // Phase 2.1 keeps the background service microphone-free.
+        // The low-power wake-word engine will be integrated separately.
 
         // Phase 2 needs microphone permission before the background
         // speech recognizer can start.
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-        } else {
-            startRjnxVoiceServiceAfterPermissions()
-        }
+        startRjnxVoiceServiceAfterPermissions()
         input = findViewById(R.id.input)
         chat = findViewById(R.id.chat)
         mic = findViewById(R.id.mic)
