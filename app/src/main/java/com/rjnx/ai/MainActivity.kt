@@ -107,7 +107,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     private fun handleCommand(raw: String) {
         val text = raw.trim()
-        val command = text.lowercase(Locale.getDefault())
+        val command = normalizeVoiceCommand(text)
         addUser(text)
 
         val memoryQuestion =
@@ -118,21 +118,19 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             command.contains("remember me")
 
         val isCallCommand =
-            command.startsWith("call ") ||
-            command.contains(" call ") ||
-            command.contains(" ko call karo") ||
-            command.contains(" ko phone karo") ||
-            command.contains(" ko phone lagao") ||
-            command.contains(" ko call lagao") ||
-            command.startsWith("phone ") ||
-            command.startsWith("phone karo ")
+            command.matches(Regex(".*\\b(call|phone|contact)\\b.*")) &&
+            (command.contains("karo") ||
+             command.contains("kar do") ||
+             command.contains("lagao") ||
+             command.contains("lagao") ||
+             command.startsWith("call ") ||
+             command.startsWith("phone "))
 
         val isAlarmCommand =
             command.contains("alarm") ||
             command.contains("wake me") ||
-            command.contains("baje alarm") ||
-            command.contains("baje ka alarm") ||
-            command.contains("ka alarm")
+            command.contains("subah") && command.contains("baje") ||
+            command.contains("baje") && command.contains("utha")
 
         when {
             memoryQuestion -> askAI(text)
@@ -144,52 +142,26 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             command.startsWith("remember ") ||
             command.startsWith("save note ") ||
             command.startsWith("make a note ") ||
-            command.startsWith("note ") -> saveNote(text)
+            command.startsWith("note ") ||
+            command.startsWith("yaad rakh") ||
+            command.startsWith("yaad rakhna") ||
+            command.startsWith("yaad rakh lo") -> saveNote(text)
 
             command.contains("show my notes") ||
             command.contains("read my notes") ||
             command.contains("what are my notes") ||
-            command == "my notes" -> showNotes()
+            command == "my notes" ||
+            command.contains("meri notes") ||
+            command.contains("mere notes") -> showNotes()
 
             command.contains("clear my notes") ||
-            command.contains("delete my notes") -> clearNotes()
+            command.contains("delete my notes") ||
+            command.contains("notes delete") -> clearNotes()
 
             command.contains("youtube") -> {
                 openInstalledAppByName("youtube") || run {
                     openUrl("https://www.youtube.com")
                     reply("Opening YouTube.")
-                }
-            }
-
-            command.startsWith("open app ") ||
-            command.startsWith("launch ") ||
-            command.startsWith("open ") -> {
-                val appName = text
-                    .replace(Regex("(?i)^\\s*(open app|launch|open)\\s+"), "")
-                    .replace(Regex("(?i)\\s+(app|khol|kholo|open)$"), "")
-                    .trim()
-
-                if (appName.isBlank()) {
-                    reply("Tell me which app to open.")
-                } else if (!openInstalledAppByName(appName)) {
-                    reply("I couldn't find the $appName app on your phone.")
-                }
-            }
-
-            command.contains("google") || command.contains("search") ||
-            command.contains("google par") -> {
-                val query = text
-                    .replace(Regex("(?i)google"), "")
-                    .replace(Regex("(?i)search"), "")
-                    .replace(Regex("(?i)par"), "")
-                    .replace(Regex("(?i)karo"), "")
-                    .trim()
-
-                if (query.isBlank()) {
-                    reply("What should I search for?")
-                } else {
-                    openUrl("https://www.google.com/search?q=${Uri.encode(query)}")
-                    reply("Searching the web.")
                 }
             }
 
@@ -214,7 +186,9 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 }
             }
 
-            command.contains("settings") -> {
+            command.contains("settings") ||
+            command.contains("setting kholo") ||
+            command.contains("settings kholo") -> {
                 startActivity(Intent(Settings.ACTION_SETTINGS))
                 reply("Opening Settings.")
             }
@@ -224,21 +198,66 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             command.contains("open gallery") ||
             command.contains("open photos") ||
             command.contains("gallery kholo") ||
+            command.contains("gallery khol do") ||
             command.contains("photos kholo") -> {
                 startActivity(Intent(Intent.ACTION_VIEW).apply { type = "image/*" })
                 reply("Opening Gallery.")
             }
 
-            command.contains("browser") || command.contains("chrome") -> {
+            command.contains("google") || command.contains("search") ||
+            command.contains("google par") ||
+            command.contains("google pe") ||
+            command.contains("search karo") -> {
+                val query = text
+                    .replace(Regex("(?i)google"), "")
+                    .replace(Regex("(?i)search"), "")
+                    .replace(Regex("(?i)par"), "")
+                    .replace(Regex("(?i)pe"), "")
+                    .replace(Regex("(?i)karo"), "")
+                    .replace(Regex("(?i)kar do"), "")
+                    .trim()
+
+                if (query.isBlank()) {
+                    reply("What should I search for?")
+                } else {
+                    openUrl("https://www.google.com/search?q=${Uri.encode(query)}")
+                    reply("Searching the web.")
+                }
+            }
+
+            command.contains("browser") -> {
                 openUrl("https://www.google.com")
                 reply("Opening the browser.")
             }
 
-            command.contains("hello") || command.matches(Regex(".*\\bhi\\b.*")) ->
+            command.contains("hello") ||
+            command.contains("hey rjnx") ||
+            command.matches(Regex(".*\\bhi\\b.*")) ->
                 reply("Hello! I'm RJNX AI. How can I help?")
 
             else -> askAI(text)
         }
+    }
+
+    private fun normalizeVoiceCommand(raw: String): String {
+        return raw
+            .lowercase(Locale.getDefault())
+            .replace("kholo", " kholo ")
+            .replace("khol do", " kholo ")
+            .replace("open karo", " kholo ")
+            .replace("chalao", " kholo ")
+            .replace("chala do", " kholo ")
+            .replace("chala", " kholo ")
+            .replace("lagao", " lagao ")
+            .replace("laga do", " lagao ")
+            .replace("phone laga do", " phone lagao ")
+            .replace("call kar do", " call karo ")
+            .replace("call kr do", " call karo ")
+            .replace("kr do", " karo ")
+            .replace("kar do", " karo ")
+            .replace("please", "")
+            .replace(Regex("\\s+"), " ")
+            .trim()
     }
 
     private fun saveNote(raw: String) {
@@ -378,25 +397,33 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             .find(text)
 
         if (timeMatch == null) {
-            reply("Say the alarm time, for example: 7 baje or set alarm 7:30.")
+            reply("Time batao, jaise 7 baje ya 7:30 AM.")
             return
         }
 
         var hour = timeMatch.groupValues[1].toInt()
         val minute = timeMatch.groupValues[2].ifBlank { "0" }.toInt()
 
-        val after = text.substring(timeMatch.range.last + 1)
-        val isPm = Regex("""\bpm\b""").containsMatchIn(after)
-        val isAm = Regex("""\bam\b""").containsMatchIn(after)
+        val fullBefore = text.substring(0, timeMatch.range.first)
+        val fullAfter = text.substring(timeMatch.range.last + 1)
+        val isPm = Regex("""\bpm\b""").containsMatchIn(fullBefore + " " + fullAfter)
+        val isAm = Regex("""\bam\b""").containsMatchIn(fullBefore + " " + fullAfter)
+        val morning = text.contains("subah")
+        val evening = text.contains("shaam") || text.contains("evening")
+        val night = text.contains("raat") || text.contains("night")
 
-        if (isPm && hour in 1..11) hour += 12
-        if (isAm && hour == 12) hour = 0
+        if (isPm || evening || night) {
+            if (hour in 1..11) hour += 12
+        } else if (isAm || morning) {
+            if (hour == 12) hour = 0
+        }
 
         val calendar = java.util.Calendar.getInstance().apply {
             set(java.util.Calendar.SECOND, 0)
             set(java.util.Calendar.MILLISECOND, 0)
             set(java.util.Calendar.HOUR_OF_DAY, hour)
             set(java.util.Calendar.MINUTE, minute)
+
             if (timeInMillis <= System.currentTimeMillis()) {
                 add(java.util.Calendar.DAY_OF_YEAR, 1)
             }
@@ -404,7 +431,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
         val alarmManager = getSystemService(ALARM_SERVICE) as android.app.AlarmManager
         val alarmIntent = Intent(this, RjnxAlarmReceiver::class.java).apply {
-            putExtra("message", "RJNX AI alarm")
+            putExtra("message", "RJNX AI Alarm")
         }
 
         val pendingIntent = android.app.PendingIntent.getBroadcast(
@@ -419,7 +446,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S &&
                 !alarmManager.canScheduleExactAlarms()
             ) {
-                reply("Android needs exact-alarm permission. Opening the permission screen.")
+                reply("Exact alarm permission chahiye. Main settings khol raha hoon.")
                 startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
                     data = Uri.parse("package:$packageName")
                 })
