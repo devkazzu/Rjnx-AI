@@ -83,6 +83,8 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
         setContentView(R.layout.activity_main)
 
+        handleWakeCommand(intent)
+
         // Phase 2.1 keeps the microphone closed until the real wake-word
         // engine is integrated, but we retain/request the permission now.
         requestMicrophonePermissionIfNeeded()

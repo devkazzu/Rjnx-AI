@@ -141,12 +141,10 @@ class RjnxVoiceService : Service() {
     }
 
     private fun deliverCommand(command: String) {
+        updateNotification("Mio heard you — listening…")
+
         val intent = Intent(this, MainActivity::class.java).apply {
-            addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP
-            )
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             putExtra("MIO_WAKE", true)
             putExtra("MIO_COMMAND", command)
         }
@@ -156,6 +154,7 @@ class RjnxVoiceService : Service() {
     private fun isMioWake(text: String): Boolean {
         val normalized = text.lowercase().trim()
         return normalized == "mio" ||
+            normalized == "hey mio" ||
             normalized.contains("hey mio")
     }
 
