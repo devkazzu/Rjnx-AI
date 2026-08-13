@@ -18,8 +18,8 @@ android {
         applicationId = "com.rjnx.ai"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.4"
+        versionCode = 5
+        versionName = "1.5"
 
         buildConfigField(
             "String",
@@ -36,4 +36,5 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.activity:activity-ktx:1.10.0")
+    implementation("com.alphacephei:vosk-android:0.3.70")
 }
