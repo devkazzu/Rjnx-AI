@@ -21,6 +21,12 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Download Vosk English India model
+        run: |
+          mkdir -p app/src/main/assets
+          curl -L --fail --retry 3             -o /tmp/vosk-model.zip             https://alphacephei.com/vosk/models/vosk-model-small-en-in-0.4.zip
+          unzip -q /tmp/vosk-model.zip -d app/src/main/assets
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -34,6 +40,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: RJNX-AI-v1.4-debug-apk
+          name: RJNX-AI-v1.5-mio-vosk-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
