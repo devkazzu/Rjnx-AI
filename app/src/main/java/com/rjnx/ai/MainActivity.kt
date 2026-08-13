@@ -83,6 +83,10 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
         setContentView(R.layout.activity_main)
 
+        // Phase 2.1 keeps the microphone closed until the real wake-word
+        // engine is integrated, but we retain/request the permission now.
+        requestMicrophonePermissionIfNeeded()
+
         // Phase 2.1 keeps the background service microphone-free.
         // The low-power wake-word engine will be integrated separately.
 
@@ -115,6 +119,22 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             startListening()
         }
     }
+
+    private fun requestMicrophonePermissionIfNeeded() {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    private val audioPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+            // Permission is only prepared for the future wake-word engine.
+            // No microphone capture is started here.
+        }
 
     private fun startRjnxVoiceService() {
         try {
