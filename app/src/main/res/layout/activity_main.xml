@@ -3,75 +3,163 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="20dp"
-    android:background="#080A12">
+    android:background="#070A12">
 
-    <TextView
-        android:id="@+id/title"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="RJNX AI"
-        android:textColor="#FFFFFF"
-        android:textSize="30sp"
-        android:textStyle="bold" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="14dp">
 
-    <TextView
-        android:id="@+id/status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="Ready • Voice Assistant V1"
-        android:textColor="#AAB0C5"
-        android:textSize="14sp" />
+        <ImageView
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_mio"
+            android:contentDescription="Mio"
+            android:background="@drawable/mio_logo_bg"
+            android:padding="5dp"/>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MIO"
+                android:textColor="#F7FAFF"
+                android:textSize="25sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.10"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ONLINE • RJNX AI"
+                android:textColor="#57D7FF"
+                android:textSize="11sp"
+                android:letterSpacing="0.05"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="V3"
+            android:textColor="#68738A"
+            android:textSize="11sp"/>
+    </LinearLayout>
 
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="18dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="10dp">
 
         <TextView
             android:id="@+id/chat"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#121625"
-            android:padding="18dp"
-            android:text="RJNX: Hello! What can I do for you?"
-            android:textColor="#F4F5FA"
-            android:textSize="17sp" />
+            android:text="Mio: Hello! I'm ready."
+            android:textColor="#E9EEFF"
+            android:textSize="16sp"
+            android:lineSpacingExtra="5dp"
+            android:background="@drawable/chat_panel_bg"
+            android:padding="18dp"/>
     </ScrollView>
-
-    <EditText
-        android:id="@+id/input"
-        android:layout_width="match_parent"
-        android:layout_height="55dp"
-        android:layout_marginTop="14dp"
-        android:background="#121625"
-        android:hint="Type a command…"
-        android:padding="14dp"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#7E849A" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:orientation="horizontal">
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="16dp">
 
-        <Button
-            android:id="@+id/send"
-            android:layout_width="0dp"
-            android:layout_height="55dp"
-            android:layout_weight="1"
-            android:text="SEND" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="8dp"
+            android:background="@drawable/input_bg">
 
-        <Button
-            android:id="@+id/mic"
-            android:layout_width="0dp"
-            android:layout_height="55dp"
-            android:layout_marginStart="10dp"
-            android:layout_weight="1"
-            android:text="🎙 MIC" />
+            <EditText
+                android:id="@+id/input"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:hint="Talk to Mio..."
+                android:hintTextColor="#68738A"
+                android:textColor="#F7FAFF"
+                android:textSize="16sp"
+                android:singleLine="true"/>
+
+            <ImageButton
+                android:id="@+id/micSmall"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:src="@android:drawable/ic_btn_speak_now"
+                android:contentDescription="Voice"
+                android:background="@drawable/mic_small_bg"
+                android:tint="#57D7FF"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:layout_marginTop="10dp">
+
+            <Button
+                android:id="@+id/send"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="SEND"
+                android:textColor="#07101A"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:background="@drawable/send_bg"
+                android:stateListAnimator="@null"/>
+
+            <Space
+                android:layout_width="10dp"
+                android:layout_height="1dp"/>
+
+            <Button
+                android:id="@+id/mic"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="🎙  MIO"
+                android:textColor="#EAFBFF"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:background="@drawable/mic_bg"
+                android:stateListAnimator="@null"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Say “Hey Mio” to wake your assistant"
+            android:textColor="#566078"
+            android:textSize="10sp"
+            android:gravity="center"
+            android:layout_marginTop="8dp"/>
     </LinearLayout>
 
 </LinearLayout>
