@@ -147,7 +147,7 @@
             <TextView
                 android:id="@+id/quick_code"
                 style="@style/MioQuickAction"
-                android:text="</>  Help me Code                                  ›" />
+                android:text="&lt;/&gt;  Help me Code                                  ›" />
 
             <TextView
                 android:id="@+id/quick_story"
