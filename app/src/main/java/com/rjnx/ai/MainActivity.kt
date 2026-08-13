@@ -114,6 +114,8 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             command.contains("do you remember me") ||
             command.contains("what do you remember") ||
             command.contains("what do you know about me") ||
+            command.contains("kya yaad hai") ||
+            command.contains("mujhe yaad hai") ||
             command == "who am i" ||
             command.contains("remember me")
 
@@ -269,13 +271,13 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun buildMemoryAnswer(): String {
-        if (conversation.isEmpty()) {
-            return ""
-        }
-
-        val saved = conversation
-            .filter { it.first.equals("memory", ignoreCase = true) }
-            .map { it.second.trim() }
+        // Memory is persisted in SharedPreferences by saveNote(), not in
+        // the temporary conversation list. Read the same persistent store.
+        val saved = getPreferences(MODE_PRIVATE)
+            .getStringSet("notes", emptySet())
+            ?.toList()
+            .orEmpty()
+            .map { it.trim() }
             .filter { it.isNotBlank() }
             .distinct()
 
