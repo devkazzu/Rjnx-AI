@@ -118,6 +118,19 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    private fun handleWakeCommand(intent: Intent) {
+        if (!intent.getBooleanExtra("MIO_WAKE", false)) return
+
+        val command = intent.getStringExtra("MIO_COMMAND").orEmpty().trim()
+
+        if (command.isNotBlank()) {
+            handleCommand(command)
+        } else {
+            reply("Yes, I'm listening.")
+            startListening()
+        }
+    }
+
     private fun startRjnxVoiceService() {
         try {
             val serviceIntent = Intent(this, RjnxVoiceService::class.java)
