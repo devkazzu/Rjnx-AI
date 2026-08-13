@@ -100,28 +100,49 @@ class RjnxVoiceService : Service() {
             val count = audioRecord?.read(buffer, 0, buffer.size) ?: 0
             if (count <= 0) continue
 
-            val accepted = if (commandMode) {
-                commandRecognizer?.acceptWaveForm(buffer, count) == true
-            } else {
-                wakeRecognizer?.acceptWaveForm(buffer, count) == true
-            }
-
-            if (accepted) {
-                val resultJson = if (commandMode) {
-                    commandRecognizer?.getResult() ?: ""
-                } else {
-                    wakeRecognizer?.getResult() ?: ""
-                }
-                val text = parseText(resultJson)
-                if (text.isNotBlank()) {
-                    if (!commandMode && isMioWake(text)) {
-                        enterCommandMode()
-                    } else if (commandMode) {
+            if (commandMode) {
+                val accepted = commandRecognizer?.acceptWaveForm(buffer, count) == true
+                if (accepted) {
+                    val text = parseText(commandRecognizer?.getResult()?.toString() ?: "")
+                    if (text.isNotBlank()) {
                         deliverCommand(text)
                         enterWakeMode()
                     }
                 }
+            } else {
+                val accepted = wakeRecognizer?.acceptWaveForm(buffer, count) == true
+                if (accepted) {
+                    val text = parseText(wakeRecognizer?.getResult()?.toString() ?: "")
+                    if (isMioWake(text)) {
+                        enterCommandMode()
+                        announceWake()
+                    }
+                } else {
+                    // Vosk may recognize the wake phrase only in a partial result.
+                    val partial = parseText(wakeRecognizer?.partialResult?.toString() ?: "")
+                    if (isMioWake(partial)) {
+                        enterCommandMode()
+                        announceWake()
+                    }
+                }
             }
+        }
+    }
+
+    private fun announceWake() {
+        updateNotification("Mio heard you — listening…")
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP
+            )
+            putExtra("MIO_WAKE", true)
+            putExtra("MIO_COMMAND", "")
+        }
+        try {
+            startActivity(intent)
+        } catch (_: Exception) {
+            // Keep listening if Android does not allow an Activity launch.
         }
     }
 
@@ -155,7 +176,9 @@ class RjnxVoiceService : Service() {
         val normalized = text.lowercase().trim()
         return normalized == "mio" ||
             normalized == "hey mio" ||
-            normalized.contains("hey mio")
+            normalized.contains("hey mio") ||
+            normalized.endsWith(" mio") ||
+            normalized.startsWith("mio ")
     }
 
     private fun parseText(json: String): String {
