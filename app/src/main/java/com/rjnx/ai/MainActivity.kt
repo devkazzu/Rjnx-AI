@@ -90,8 +90,29 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             command == "who am i" ||
             command.contains("remember me")
 
+        val isCallCommand =
+            command.startsWith("call ") ||
+            command.contains(" call ") ||
+            command.contains(" ko call karo") ||
+            command.contains(" ko phone karo") ||
+            command.contains(" ko phone lagao") ||
+            command.contains(" ko call lagao") ||
+            command.startsWith("phone ") ||
+            command.startsWith("phone karo ")
+
+        val isAlarmCommand =
+            command.contains("alarm") ||
+            command.contains("wake me") ||
+            command.contains("baje alarm") ||
+            command.contains("baje ka alarm") ||
+            command.contains("ka alarm")
+
         when {
             memoryQuestion -> askAI(text)
+
+            isCallCommand -> makeCall(text)
+
+            isAlarmCommand -> setAlarmFromCommand(text)
 
             command.startsWith("remember ") ||
             command.startsWith("save note ") ||
@@ -111,8 +132,15 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 reply("Opening YouTube.")
             }
 
-            command.contains("google") || command.contains("search") -> {
-                val query = text.replace(Regex("(?i)search|google"), "").trim()
+            command.contains("google") || command.contains("search") ||
+            command.contains("google par") -> {
+                val query = text
+                    .replace(Regex("(?i)google"), "")
+                    .replace(Regex("(?i)search"), "")
+                    .replace(Regex("(?i)par"), "")
+                    .replace(Regex("(?i)karo"), "")
+                    .trim()
+
                 if (query.isBlank()) {
                     reply("What should I search for?")
                 } else {
@@ -129,15 +157,12 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             command == "gallery" ||
             command == "photos" ||
             command.contains("open gallery") ||
-            command.contains("open photos") -> {
+            command.contains("open photos") ||
+            command.contains("gallery kholo") ||
+            command.contains("photos kholo") -> {
                 startActivity(Intent(Intent.ACTION_VIEW).apply { type = "image/*" })
                 reply("Opening Gallery.")
             }
-
-            command.startsWith("call ") || command == "call" -> makeCall(text)
-
-            command.contains("alarm") || command.contains("wake me") ->
-                setAlarmFromCommand(text)
 
             command.contains("browser") || command.contains("chrome") -> {
                 openUrl("https://www.google.com")
@@ -196,15 +221,36 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun makeCall(raw: String) {
-        val target = raw.replace(Regex("(?i)^.*?call\\s+"), "").trim()
-        if (target.isBlank()) { reply("Tell me who you want to call."); return }
+        val command = raw.trim()
+
+        val target = command
+            .replace(
+                Regex(
+                    "(?i)^\\s*(call|phone)\\s+|\\s*(ko\\s+)?(call|phone)(\\s+kar(o|na)|\\s+lagao)?\\s*$|" +
+                    "\\s*(ko\\s+)?call\\s+karo\\s*$|" +
+                    "\\s*(ko\\s+)?phone\\s+karo\\s*$"
+                ),
+                ""
+            )
+            .trim()
+
+        if (target.isBlank()) {
+            reply("Tell me who you want to call.")
+            return
+        }
+
         val number = findContactNumber(target)
         if (number != null) {
-            startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))); reply("Opening the dialer for $target.")
+            startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))
+            reply("Opening the dialer for $target.")
         } else {
             val directNumber = target.replace(Regex("[^0-9+]"), "")
-            if (directNumber.length >= 7) { startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$directNumber"))); reply("Opening the dialer.") }
-            else reply("I couldn't find $target in your contacts.")
+            if (directNumber.length >= 7) {
+                startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$directNumber")))
+                reply("Opening the dialer.")
+            } else {
+                reply("I couldn't find $target in your contacts.")
+            }
         }
     }
 
@@ -227,14 +273,39 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun setAlarmFromCommand(raw: String) {
-        val match = Regex("(?i)\\b([01]?\\d|2[0-3])[:.]([0-5]\\d)\\b").find(raw)
-        if (match == null) { reply("Say the alarm time, for example: set alarm 7:30."); return }
-        val hour = match.groupValues[1].toInt(); val minute = match.groupValues[2].toInt()
-        val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
-            putExtra(AlarmClock.EXTRA_HOUR, hour); putExtra(AlarmClock.EXTRA_MINUTES, minute); putExtra(AlarmClock.EXTRA_MESSAGE, "RJNX AI Alarm")
+        val text = raw.lowercase(Locale.getDefault())
+
+        val timeMatch = Regex("""\b([01]?\d|2[0-3])(?:[:.]([0-5]\d))?\s*(?:baje|am|pm)?\b""")
+            .find(text)
+
+        if (timeMatch == null) {
+            reply("Say the alarm time, for example: 7 baje or set alarm 7:30.")
+            return
         }
-        try { startActivity(intent); reply("Opening alarm setup for ${String.format("%02d:%02d", hour, minute)}.") }
-        catch (e: Exception) { Toast.makeText(this, "No alarm app available", Toast.LENGTH_SHORT).show(); reply("I couldn't open the alarm app.") }
+
+        var hour = timeMatch.groupValues[1].toInt()
+        val minute = timeMatch.groupValues[2].ifBlank { "0" }.toInt()
+
+        val after = text.substring(timeMatch.range.last + 1)
+        val isPm = Regex("""\bpm\b""").containsMatchIn(after)
+        val isAm = Regex("""\bam\b""").containsMatchIn(after)
+
+        if (isPm && hour in 1..11) hour += 12
+        if (isAm && hour == 12) hour = 0
+
+        val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+            putExtra(AlarmClock.EXTRA_HOUR, hour)
+            putExtra(AlarmClock.EXTRA_MINUTES, minute)
+            putExtra(AlarmClock.EXTRA_MESSAGE, "RJNX AI Alarm")
+        }
+
+        try {
+            startActivity(intent)
+            reply("Opening alarm setup for ${String.format("%02d:%02d", hour, minute)}.")
+        } catch (_: Exception) {
+            Toast.makeText(this, "No alarm app available", Toast.LENGTH_SHORT).show()
+            reply("I couldn't open the alarm app.")
+        }
     }
 
     private fun askAI(question: String) {
