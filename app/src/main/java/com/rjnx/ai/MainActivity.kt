@@ -155,8 +155,25 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             command.contains("delete my notes") -> clearNotes()
 
             command.contains("youtube") -> {
-                openUrl("https://www.youtube.com")
-                reply("Opening YouTube.")
+                openInstalledAppByName("youtube") || run {
+                    openUrl("https://www.youtube.com")
+                    reply("Opening YouTube.")
+                }
+            }
+
+            command.startsWith("open app ") ||
+            command.startsWith("launch ") ||
+            command.startsWith("open ") -> {
+                val appName = text
+                    .replace(Regex("(?i)^\\s*(open app|launch|open)\\s+"), "")
+                    .replace(Regex("(?i)\\s+(app|khol|kholo|open)$"), "")
+                    .trim()
+
+                if (appName.isBlank()) {
+                    reply("Tell me which app to open.")
+                } else if (!openInstalledAppByName(appName)) {
+                    reply("I couldn't find the $appName app on your phone.")
+                }
             }
 
             command.contains("google") || command.contains("search") ||
@@ -173,6 +190,27 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 } else {
                     openUrl("https://www.google.com/search?q=${Uri.encode(query)}")
                     reply("Searching the web.")
+                }
+            }
+
+            command.contains("instagram") -> {
+                if (!openInstalledAppByName("instagram")) {
+                    openUrl("https://www.instagram.com")
+                    reply("Opening Instagram.")
+                }
+            }
+
+            command.contains("whatsapp") -> {
+                if (!openInstalledAppByName("whatsapp")) {
+                    openUrl("https://web.whatsapp.com")
+                    reply("Opening WhatsApp.")
+                }
+            }
+
+            command.contains("chrome") -> {
+                if (!openInstalledAppByName("chrome")) {
+                    openUrl("https://www.google.com")
+                    reply("Opening the browser.")
                 }
             }
 
@@ -499,6 +537,31 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 }
             }
         }.start()
+    }
+
+    private fun openInstalledAppByName(name: String): Boolean {
+        val wanted = name.lowercase(Locale.getDefault()).trim()
+        if (wanted.isBlank()) return false
+
+        val pm = packageManager
+        val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+
+        val appInfo = apps.firstOrNull { info ->
+            val label = pm.getApplicationLabel(info).toString()
+                .lowercase(Locale.getDefault())
+            label == wanted || label.contains(wanted)
+        } ?: return false
+
+        val launchIntent = pm.getLaunchIntentForPackage(appInfo.packageName)
+            ?: return false
+
+        try {
+            startActivity(launchIntent)
+            reply("Opening ${pm.getApplicationLabel(appInfo)}.")
+            return true
+        } catch (_: Exception) {
+            return false
+        }
     }
 
     private fun openUrl(url: String) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
