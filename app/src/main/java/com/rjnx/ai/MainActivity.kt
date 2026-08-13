@@ -113,8 +113,9 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
             command.contains("google") || command.contains("search") -> {
                 val query = text.replace(Regex("(?i)search|google"), "").trim()
-                if (query.isBlank()) reply("What should I search for?")
-                else {
+                if (query.isBlank()) {
+                    reply("What should I search for?")
+                } else {
                     openUrl("https://www.google.com/search?q=${Uri.encode(query)}")
                     reply("Searching the web.")
                 }
@@ -125,7 +126,10 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 reply("Opening Settings.")
             }
 
-            command.contains("gallery") || command.contains("photos") -> {
+            command == "gallery" ||
+            command == "photos" ||
+            command.contains("open gallery") ||
+            command.contains("open photos") -> {
                 startActivity(Intent(Intent.ACTION_VIEW).apply { type = "image/*" })
                 reply("Opening Gallery.")
             }
@@ -164,6 +168,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
         notes.add(note)
         prefs.edit().putStringSet("notes", notes).apply()
+
         reply("Saved that to your memory.")
     }
 
@@ -237,14 +242,26 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         addAssistant("Thinking…")
         Thread {
             try {
-                val connection = (URL("https://api.openai.com/v1/responses").openConnection() as HttpURLConnection).apply {
+                val connection = (URL("https://openrouter.ai/api/v1/chat/completions").openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"; setRequestProperty("Authorization", "Bearer $apiKey"); setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("HTTP-Referer", "https://github.com/devkazzu/Rjnx-AI")
+                    setRequestProperty("X-Title", "RJNX AI")
                     connectTimeout = 15000; readTimeout = 30000; doOutput = true
                 }
                 val messages = JSONArray()
-                messages.put(JSONObject().apply { put("role", "developer"); put("content", "You are RJNX AI, a concise and helpful Android voice assistant. Answer naturally and clearly.") })
-                synchronized(conversation) { conversation.takeLast(10).forEach { (role, text) -> messages.put(JSONObject().apply { put("role", role); put("content", text) }) } }
-                                val savedNotes = getPreferences(MODE_PRIVATE)
+                messages.put(JSONObject().apply {
+                    put("role", "system")
+                    put("content", "You are RJNX AI, a concise and helpful Android voice assistant. Answer naturally and clearly.")
+                })
+                synchronized(conversation) {
+                    conversation.takeLast(10).forEach { (role, text) ->
+                        messages.put(JSONObject().apply {
+                            put("role", if (role == "assistant") "assistant" else "user")
+                            put("content", text)
+                        })
+                    }
+                }
+                val savedNotes = getPreferences(MODE_PRIVATE)
                     .getStringSet("notes", emptySet())
                     ?.toList()
                     .orEmpty()
@@ -260,23 +277,45 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     })
                 }
 
-messages.put(JSONObject().apply { put("role", "user"); put("content", question) })
-                val body = JSONObject().apply { put("model", "gpt-5-mini"); put("input", messages) }
+                messages.put(JSONObject().apply {
+                    put("role", "user")
+                    put("content", question)
+                })
+                val body = JSONObject().apply {
+                    put("model", "openrouter/free")
+                    put("messages", messages)
+                }
                 connection.outputStream.use { it.write(body.toString().toByteArray()) }
                 val code = connection.responseCode
                 val stream = if (code in 200..299) connection.inputStream else connection.errorStream
                 val response = BufferedReader(InputStreamReader(stream)).use { it.readText() }
-                if (code !in 200..299) { Log.e("RJNX_AI", "HTTP $code: $response"); runOnUiThread { reply("AI request failed ($code). Check your API key or connection.") }; return@Thread }
-                val output = JSONObject(response).optJSONArray("output")
+                if (code !in 200..299) {
+                    Log.e("RJNX_AI", "HTTP $code: $response")
+                    val detail = try {
+                        val error = JSONObject(response).optJSONObject("error")
+                        error?.optString("message")?.takeIf { it.isNotBlank() } ?: response.take(300)
+                    } catch (_: Exception) {
+                        response.take(300)
+                    }
+                    runOnUiThread { reply("OpenRouter Error $code: $detail") }
+                    return@Thread
+                }
+                val choices = JSONObject(response).optJSONArray("choices")
                 var answer = ""
-                if (output != null) for (i in 0 until output.length()) {
-                    val item = output.optJSONObject(i) ?: continue; val parts = item.optJSONArray("content") ?: continue
-                    for (j in 0 until parts.length()) { val part = parts.optJSONObject(j) ?: continue; if (part.optString("type") == "output_text") answer += part.optString("text") }
+                if (choices != null && choices.length() > 0) {
+                    answer = choices.optJSONObject(0)
+                        ?.optJSONObject("message")
+                        ?.optString("content", "") ?: ""
                 }
                 if (answer.isBlank()) answer = "I couldn't generate a response."
                 synchronized(conversation) { conversation.add("user" to question); conversation.add("assistant" to answer); while (conversation.size > 20) conversation.removeAt(0) }
                 runOnUiThread { reply(answer) }
-            } catch (e: Exception) { Log.e("RJNX_AI", "AI request error", e); runOnUiThread { reply("Couldn't reach the AI service. Check your internet connection.") } }
+            } catch (e: Exception) {
+                Log.e("RJNX_AI", "AI request error", e)
+                runOnUiThread {
+                    reply("Network/Request error: ${e.javaClass.simpleName}: ${e.message ?: "unknown error"}")
+                }
+            }
         }.start()
     }
 
