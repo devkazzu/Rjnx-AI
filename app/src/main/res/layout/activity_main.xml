@@ -102,7 +102,7 @@
                 android:layout_weight="1"
                 android:background="@android:color/transparent"
                 android:hint="Talk to Mio..."
-                android:hintTextColor="#68738A"
+                android:textColorHint="#68738A"
                 android:textColor="#F7FAFF"
                 android:textSize="16sp"
                 android:singleLine="true"/>
