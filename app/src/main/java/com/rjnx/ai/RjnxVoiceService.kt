@@ -108,9 +108,9 @@ class RjnxVoiceService : Service() {
 
             if (accepted) {
                 val resultJson = if (commandMode) {
-                    commandRecognizer?.result()?.toString() ?: ""
+                    commandRecognizer?.getResult() ?: ""
                 } else {
-                    wakeRecognizer?.result()?.toString() ?: ""
+                    wakeRecognizer?.getResult() ?: ""
                 }
                 val text = parseText(resultJson)
                 if (text.isNotBlank()) {
