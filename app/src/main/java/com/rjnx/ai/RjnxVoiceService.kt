@@ -100,9 +100,19 @@ class RjnxVoiceService : Service() {
             val count = audioRecord?.read(buffer, 0, buffer.size) ?: 0
             if (count <= 0) continue
 
-            val recognizer = if (commandMode) commandRecognizer else wakeRecognizer
-            if (recognizer?.acceptWaveForm(buffer, count) == true) {
-                val text = parseText(recognizer.result())
+            val accepted = if (commandMode) {
+                commandRecognizer?.acceptWaveForm(buffer, count) == true
+            } else {
+                wakeRecognizer?.acceptWaveForm(buffer, count) == true
+            }
+
+            if (accepted) {
+                val resultJson = if (commandMode) {
+                    commandRecognizer?.result().orEmpty()
+                } else {
+                    wakeRecognizer?.result().orEmpty()
+                }
+                val text = parseText(resultJson)
                 if (text.isNotBlank()) {
                     if (!commandMode && isMioWake(text)) {
                         enterCommandMode()
