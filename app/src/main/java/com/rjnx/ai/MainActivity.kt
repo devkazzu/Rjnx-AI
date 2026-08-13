@@ -32,6 +32,15 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private lateinit var mic: Button
     private lateinit var tts: TextToSpeech
     private var recognizer: SpeechRecognizer? = null
+    private var pendingCallNumber: String? = null
+    private var pendingCallName: String? = null
+
+    companion object {
+        private const val REQUEST_CALL_PHONE = 901
+        private const val REQUEST_CONTACTS = 902
+        private const val REQUEST_NOTIFICATIONS = 903
+    }
+
     private val apiKey = BuildConfig.OPENROUTER_API_KEY
     private val conversation = mutableListOf<Pair<String, String>>()
 
@@ -49,6 +58,32 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         mic.setOnClickListener { startListening() }
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 10)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        when (requestCode) {
+            REQUEST_CALL_PHONE -> {
+                val number = pendingCallNumber
+                val name = pendingCallName ?: "contact"
+                pendingCallNumber = null
+                pendingCallName = null
+
+                if (grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED &&
+                    number != null
+                ) {
+                    makeDirectCall(number, name)
+                } else {
+                    reply("Phone permission was denied, so I couldn't call $name.")
+                }
+            }
         }
     }
 
@@ -241,16 +276,39 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
         val number = findContactNumber(target)
         if (number != null) {
-            startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))
-            reply("Opening the dialer for $target.")
+            makeDirectCall(number, target)
         } else {
             val directNumber = target.replace(Regex("[^0-9+]"), "")
             if (directNumber.length >= 7) {
-                startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$directNumber")))
-                reply("Opening the dialer.")
+                makeDirectCall(directNumber, target)
             } else {
                 reply("I couldn't find $target in your contacts.")
             }
+        }
+    }
+
+    private fun makeDirectCall(number: String, target: String) {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.CALL_PHONE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingCallNumber = number
+            pendingCallName = target
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CALL_PHONE),
+                REQUEST_CALL_PHONE
+            )
+            reply("Allow phone permission and I'll call $target.")
+            return
+        }
+
+        try {
+            startActivity(Intent(Intent.ACTION_CALL, Uri.parse("tel:$number")))
+            reply("Calling $target.")
+        } catch (_: Exception) {
+            reply("I couldn't place the call.")
         }
     }
 
@@ -293,18 +351,72 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         if (isPm && hour in 1..11) hour += 12
         if (isAm && hour == 12) hour = 0
 
-        val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
-            putExtra(AlarmClock.EXTRA_HOUR, hour)
-            putExtra(AlarmClock.EXTRA_MINUTES, minute)
-            putExtra(AlarmClock.EXTRA_MESSAGE, "RJNX AI Alarm")
+        val calendar = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+            set(java.util.Calendar.HOUR_OF_DAY, hour)
+            set(java.util.Calendar.MINUTE, minute)
+            if (timeInMillis <= System.currentTimeMillis()) {
+                add(java.util.Calendar.DAY_OF_YEAR, 1)
+            }
         }
 
+        val alarmManager = getSystemService(ALARM_SERVICE) as android.app.AlarmManager
+        val alarmIntent = Intent(this, RjnxAlarmReceiver::class.java).apply {
+            putExtra("message", "RJNX AI alarm")
+        }
+
+        val pendingIntent = android.app.PendingIntent.getBroadcast(
+            this,
+            hour * 60 + minute,
+            alarmIntent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or
+                    android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+
         try {
-            startActivity(intent)
-            reply("Opening alarm setup for ${String.format("%02d:%02d", hour, minute)}.")
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S &&
+                !alarmManager.canScheduleExactAlarms()
+            ) {
+                reply("Android needs exact-alarm permission. Opening the permission screen.")
+                startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    data = Uri.parse("package:$packageName")
+                })
+                return
+            }
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    android.app.AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
+            } else {
+                alarmManager.setExact(
+                    android.app.AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
+            }
+
+            if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                ActivityCompat.checkSelfPermission(
+                    this,
+                    "android.permission.POST_NOTIFICATIONS"
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf("android.permission.POST_NOTIFICATIONS"),
+                    REQUEST_NOTIFICATIONS
+                )
+            }
+
+            reply("Alarm set for ${String.format("%02d:%02d", hour, minute)}.")
+        } catch (_: SecurityException) {
+            reply("Android blocked exact-alarm access. Please allow it and try again.")
         } catch (_: Exception) {
-            Toast.makeText(this, "No alarm app available", Toast.LENGTH_SHORT).show()
-            reply("I couldn't open the alarm app.")
+            reply("I couldn't set the alarm.")
         }
     }
 
