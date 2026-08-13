@@ -11,11 +11,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
 
     <application
-        android:allowBackup="true"
-        android:label="RJNX AI"
-        android:theme="@style/Theme.RJNXAI"
-        android:supportsRtl="true">
-
+    android:allowBackup="true"
+    android:label="RJNX AI"
+    android:icon="@drawable/ic_mio"
+    android:roundIcon="@drawable/ic_mio"
+    android:theme="@style/Theme.RJNXAI"
+    android:supportsRtl="true">
         <activity
             android:name=".MainActivity"
             android:exported="true">
