@@ -117,6 +117,8 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             command == "who am i" ||
             command.contains("remember me")
 
+        val memoryAnswer = buildMemoryAnswer()
+
         val isCallCommand =
             command.matches(Regex(".*\\b(call|phone|contact)\\b.*")) &&
             (command.contains("karo") ||
@@ -133,7 +135,13 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             command.contains("baje") && command.contains("utha")
 
         when {
-            memoryQuestion -> askAI(text)
+            memoryQuestion -> {
+                if (memoryAnswer.isBlank()) {
+                    reply("I don't have anything saved about you yet.")
+                } else {
+                    reply(memoryAnswer)
+                }
+            }
 
             isCallCommand -> makeCall(text)
 
@@ -159,9 +167,9 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             command.contains("notes delete") -> clearNotes()
 
             command.contains("youtube") -> {
-                if (!openInstalledAppByName("youtube")) {
-    openUrl("https://www.youtube.com")
-    reply("Opening YouTube.")
+                openInstalledAppByName("youtube") || run {
+                    openUrl("https://www.youtube.com")
+                    reply("Opening YouTube.")
                 }
             }
 
@@ -258,6 +266,28 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             .replace("please", "")
             .replace(Regex("\\s+"), " ")
             .trim()
+    }
+
+    private fun buildMemoryAnswer(): String {
+        if (conversation.isEmpty()) {
+            return ""
+        }
+
+        val saved = conversation
+            .filter { it.first.equals("memory", ignoreCase = true) }
+            .map { it.second.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+
+        if (saved.isEmpty()) return ""
+
+        return buildString {
+            append("Yes. I remember: ")
+            saved.forEachIndexed { index, note ->
+                if (index > 0) append("; ")
+                append(note)
+            }
+        }
     }
 
     private fun saveNote(raw: String) {
