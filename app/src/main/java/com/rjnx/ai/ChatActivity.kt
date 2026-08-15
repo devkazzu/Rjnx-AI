@@ -2,12 +2,15 @@ package com.rjnx.ai
 
 import android.app.AlertDialog
 import android.content.BroadcastReceiver
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
+import android.view.MenuItem
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
@@ -50,9 +53,19 @@ class ChatActivity : AppCompatActivity() {
 
         findViewById<View>(R.id.chat_back).setOnClickListener { finish() }
 
-        // New Chat button now opens the saved chat manager.
+        // Top action: create a new chat immediately.
         findViewById<View>(R.id.chat_new).setOnClickListener {
-            showChatManager()
+            createNewChat()
+        }
+
+        // Three-dot overflow menu.
+        findViewById<View>(R.id.chat_menu).setOnClickListener {
+            showOverflowMenu(it)
+        }
+
+        // Bottom + button: create a new chat immediately.
+        findViewById<View>(R.id.chat_plus).setOnClickListener {
+            createNewChat()
         }
 
         send.setOnClickListener { sendMessage() }
@@ -190,11 +203,13 @@ class ChatActivity : AppCompatActivity() {
             gravity = Gravity.BOTTOM
         }
 
-        val avatar = ImageButton(this).apply {
+        val avatar = ImageView(this).apply {
             setImageResource(R.drawable.ic_mio)
-            background = getDrawable(R.drawable.mio_chat_avatar_bg)
-            setPadding(10, 10, 10, 10)
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = getDrawable(R.drawable.mio_chat_avatar_circle)
+            clipToOutline = true
             isClickable = false
+            contentDescription = "Mio"
         }
 
         val bubble = TextView(this).apply {
@@ -230,6 +245,77 @@ class ChatActivity : AppCompatActivity() {
     private fun saveChats() {
         ChatStore.saveChats(this, chats)
         ChatStore.setActiveId(this, activeChat.id)
+    }
+
+    private fun showOverflowMenu(anchor: View) {
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add(0, MENU_NEW, 0, "New Chat")
+        popup.menu.add(0, MENU_HISTORY, 1, "Chat History")
+        popup.menu.add(0, MENU_RENAME, 2, "Rename Chat")
+        popup.menu.add(0, MENU_CLEAR, 3, "Clear Conversation")
+        popup.menu.add(0, MENU_DELETE, 4, "Delete Chat")
+        popup.menu.add(0, MENU_EXPORT, 5, "Copy Chat")
+
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                MENU_NEW -> {
+                    createNewChat()
+                    true
+                }
+                MENU_HISTORY -> {
+                    showChatManager()
+                    true
+                }
+                MENU_RENAME -> {
+                    renameChat(activeChat)
+                    true
+                }
+                MENU_CLEAR -> {
+                    clearCurrentConversation()
+                    true
+                }
+                MENU_DELETE -> {
+                    deleteChat(activeChat)
+                    true
+                }
+                MENU_EXPORT -> {
+                    copyCurrentChat()
+                    true
+                }
+                else -> false
+            }
+        }
+        popup.show()
+    }
+
+    private fun clearCurrentConversation() {
+        AlertDialog.Builder(this)
+            .setTitle("Clear Conversation?")
+            .setMessage("Remove all messages from \"${activeChat.title}\"?")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Clear") { _, _ ->
+                activeChat.messages.clear()
+                saveChats()
+                renderActiveChat()
+                Toast.makeText(this, "Conversation cleared", Toast.LENGTH_SHORT).show()
+            }
+            .show()
+    }
+
+    private fun copyCurrentChat() {
+        val text = buildString {
+            append(activeChat.title)
+            append("\\n\\n")
+            activeChat.messages.forEach { message ->
+                append(if (message.role == "user") "You: " else "Mio: ")
+                append(message.text)
+                append("\\n\\n")
+            }
+        }.trim()
+
+        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("Mio Chat", text))
+        Toast.makeText(this, "Chat copied", Toast.LENGTH_SHORT).show()
     }
 
     private fun showChatManager() {
@@ -340,4 +426,13 @@ class ChatActivity : AppCompatActivity() {
             }
             .show()
     }
+    companion object {
+        private const val MENU_NEW = 1001
+        private const val MENU_HISTORY = 1002
+        private const val MENU_RENAME = 1003
+        private const val MENU_CLEAR = 1004
+        private const val MENU_DELETE = 1005
+        private const val MENU_EXPORT = 1006
+    }
+
 }
