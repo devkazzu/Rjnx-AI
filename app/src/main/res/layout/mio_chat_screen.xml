@@ -3,80 +3,145 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#080A12">
+    android:background="#05070D">
 
-    <LinearLayout
+    <!-- ChatGPT-style top bar -->
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="72dp"
-        android:gravity="center_vertical"
-        android:paddingHorizontal="16dp">
+        android:layout_height="68dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="10dp"
+        android:gravity="center_vertical">
 
         <TextView
             android:id="@+id/chat_back"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
             android:gravity="center"
             android:text="‹"
             android:textColor="#FFFFFF"
-            android:textSize="34sp"
+            android:textSize="38sp"
             android:clickable="true"
             android:focusable="true"/>
 
         <TextView
-            android:layout_width="0dp"
+            android:id="@+id/chat_title"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:paddingStart="8dp"
+            android:layout_toEndOf="@id/chat_back"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="10dp"
             android:text="Chats"
             android:textColor="#FFFFFF"
-            android:textSize="26sp"
+            android:textSize="25sp"
             android:textStyle="bold"/>
 
-    </LinearLayout>
+        <LinearLayout
+            android:layout_width="110dp"
+            android:layout_height="52dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:background="@drawable/mio_chat_toolbar">
+
+            <TextView
+                android:id="@+id/chat_new"
+                android:layout_width="54dp"
+                android:layout_height="46dp"
+                android:gravity="center"
+                android:text="✎"
+                android:textColor="#FFFFFF"
+                android:textSize="27sp"
+                android:clickable="true"
+                android:focusable="true"/>
+
+            <TextView
+                android:id="@+id/chat_more"
+                android:layout_width="45dp"
+                android:layout_height="46dp"
+                android:gravity="center"
+                android:text="⋮"
+                android:textColor="#FFFFFF"
+                android:textSize="28sp"/>
+        </LinearLayout>
+    </RelativeLayout>
 
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:alpha="0.15"
-        android:background="#FFFFFF"/>
+        android:background="#222631"/>
 
-    <FrameLayout
+    <!-- Conversation area -->
+    <ScrollView
+        android:id="@+id/chat_scroll"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:fillViewport="true">
 
         <LinearLayout
+            android:id="@+id/chat_messages"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:gravity="center"
             android:orientation="vertical"
-            android:padding="32dp">
+            android:gravity="center"/>
+    </ScrollView>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="💬"
-                android:textSize="54sp"/>
+    <!-- Composer -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="76dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="10dp"
+        android:gravity="center_vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="8dp"
+        android:background="@drawable/mio_chat_input">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:paddingTop="16dp"
-                android:text="No chats yet"
-                android:textColor="#FFFFFF"
-                android:textSize="21sp"
-                android:textStyle="bold"/>
+        <TextView
+            android:layout_width="38dp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="+"
+            android:textColor="#FFFFFF"
+            android:textSize="30sp"/>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:paddingTop="8dp"
-                android:text="Your conversations with Mio will appear here."
-                android:textColor="#8E95AA"
-                android:textSize="14sp"/>
-        </LinearLayout>
+        <EditText
+            android:id="@+id/chat_input"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:hint="Message Mio..."
+            android:hintTextColor="#858C9D"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:singleLine="true"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"/>
 
-    </FrameLayout>
+        <TextView
+            android:id="@+id/chat_send"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="↑"
+            android:textColor="#FFFFFF"
+            android:textSize="25sp"
+            android:background="@drawable/mio_chat_send"
+            android:clickable="true"
+            android:focusable="true"/>
+    </LinearLayout>
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="24dp"
+        android:gravity="center"
+        android:text="Mio can make mistakes. Check important information."
+        android:textColor="#656B7A"
+        android:textSize="11sp"/>
 </LinearLayout>
