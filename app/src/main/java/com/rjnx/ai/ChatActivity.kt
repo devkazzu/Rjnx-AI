@@ -5,6 +5,9 @@ import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import android.graphics.BitmapFactory
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
@@ -15,6 +18,7 @@ import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.activity.result.contract.ActivityResultContracts
 
 class ChatActivity : AppCompatActivity() {
 
@@ -25,6 +29,34 @@ class ChatActivity : AppCompatActivity() {
 
     private var chats = mutableListOf<MioChat>()
     private lateinit var activeChat: MioChat
+
+    private var pendingAttachmentUri: Uri? = null
+    private var pendingAttachmentName: String? = null
+    private var pendingAttachmentMime: String? = null
+
+    private val attachmentPicker =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null) return@registerForActivityResult
+
+            try {
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {
+                // Some providers don't support persistable permissions.
+            }
+
+            pendingAttachmentUri = uri
+            pendingAttachmentName = getFileName(uri)
+            pendingAttachmentMime = contentResolver.getType(uri)
+            input.hint = "Add a message (attachment ready)"
+            Toast.makeText(
+                this,
+                "Attached: ${pendingAttachmentName ?: "file"}",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
 
     private val voiceReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -63,9 +95,9 @@ class ChatActivity : AppCompatActivity() {
             showOverflowMenu(it)
         }
 
-        // Bottom + button: create a new chat immediately.
+        // Bottom + button: attachment picker (image or file).
         findViewById<View>(R.id.chat_plus).setOnClickListener {
-            createNewChat()
+            showAttachmentMenu(it)
         }
 
         send.setOnClickListener { sendMessage() }
@@ -145,12 +177,108 @@ class ChatActivity : AppCompatActivity() {
 
     private fun sendMessage() {
         val message = input.text.toString().trim()
-        if (message.isEmpty() || !send.isEnabled) return
+        val attachment = pendingAttachmentUri
 
-        addUserMessage(message)
+        if (message.isEmpty() && attachment == null) return
+        if (!send.isEnabled) return
+
+        val attachmentName = pendingAttachmentName
+        val attachmentMime = pendingAttachmentMime.orEmpty()
+
+        val visibleMessage = buildString {
+            if (attachmentName != null) {
+                append("📎 ")
+                append(attachmentName)
+                if (message.isNotEmpty()) append("\n")
+            }
+            append(message)
+        }.trim()
+
+        addUserMessage(visibleMessage)
         input.text.clear()
         input.hint = "Type a message..."
+        pendingAttachmentUri = null
+        pendingAttachmentName = null
+        pendingAttachmentMime = null
         setSending(true)
+
+        if (attachment != null && attachmentMime.startsWith("image/")) {
+            val bitmap = contentResolver.openInputStream(attachment)?.use {
+                BitmapFactory.decodeStream(it)
+            }
+
+            if (bitmap == null) {
+                addBotMessage("I couldn't open that image.")
+                setSending(false)
+                return
+            }
+
+            val prompt = if (message.isNotEmpty()) {
+                message
+            } else {
+                "Analyze this attached image and tell me what you see."
+            }
+
+            OpenRouterClient.askVision(bitmap, prompt) { answer ->
+                bitmap.recycle()
+                addBotMessage(answer)
+                setSending(false)
+                saveChats()
+                scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+            }
+            return
+        }
+
+        if (attachment != null && (attachmentMime.startsWith("text/") ||
+                    attachmentName?.endsWith(".txt", true) == true ||
+                    attachmentName?.endsWith(".json", true) == true ||
+                    attachmentName?.endsWith(".csv", true) == true ||
+                    attachmentName?.endsWith(".md", true) == true)) {
+
+            val fileText = try {
+                contentResolver.openInputStream(attachment)?.bufferedReader()?.use {
+                    it.readText().take(12000)
+                }.orEmpty()
+            } catch (_: Exception) {
+                ""
+            }
+
+            if (fileText.isBlank()) {
+                addBotMessage("I couldn't read that text file.")
+                setSending(false)
+                return
+            }
+
+            val prompt = buildString {
+                append("The user attached a text file named \"$attachmentName\".\n")
+                append("File content:\n")
+                append(fileText)
+                if (message.isNotEmpty()) {
+                    append("\n\nUser request:\n")
+                    append(message)
+                } else {
+                    append("\n\nSummarize or explain this file briefly.")
+                }
+            }
+
+            OpenRouterClient.ask(prompt) { answer ->
+                addBotMessage(answer)
+                setSending(false)
+                saveChats()
+                scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+            }
+            return
+        }
+
+        if (attachment != null) {
+            addBotMessage(
+                "📎 $attachmentName attached. I can currently analyze images and text files here. " +
+                    "This file type isn't readable by Mio yet."
+            )
+            setSending(false)
+            saveChats()
+            return
+        }
 
         OpenRouterClient.ask(message) { answer ->
             addBotMessage(answer)
@@ -245,6 +373,43 @@ class ChatActivity : AppCompatActivity() {
     private fun saveChats() {
         ChatStore.saveChats(this, chats)
         ChatStore.setActiveId(this, activeChat.id)
+    }
+
+    private fun showAttachmentMenu(anchor: View) {
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add(0, 2001, 0, "🖼️ Image / Photo")
+        popup.menu.add(0, 2002, 1, "📎 File")
+
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                2001 -> {
+                    attachmentPicker.launch(arrayOf("image/*"))
+                    true
+                }
+                2002 -> {
+                    attachmentPicker.launch(arrayOf("*/*"))
+                    true
+                }
+                else -> false
+            }
+        }
+        popup.show()
+    }
+
+    private fun getFileName(uri: Uri): String {
+        contentResolver.query(
+            uri,
+            arrayOf(OpenableColumns.DISPLAY_NAME),
+            null,
+            null,
+            null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index >= 0) return cursor.getString(index)
+            }
+        }
+        return uri.lastPathSegment ?: "attachment"
     }
 
     private fun showOverflowMenu(anchor: View) {
