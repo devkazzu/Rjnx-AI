@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/mio_bottom_nav"
+    android:layout_width="match_parent"
+    android:layout_height="82dp"
+    android:layout_marginStart="8dp"
+    android:layout_marginEnd="8dp"
+    android:layout_marginBottom="8dp"
+    android:background="@drawable/mio_bottom_nav_bg"
+    android:clipToPadding="false"
+    android:elevation="10dp"
+    android:gravity="center"
+    android:orientation="horizontal"
+    android:paddingStart="8dp"
+    android:paddingTop="7dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="7dp">
+
+    <LinearLayout
+        android:id="@+id/nav_home"
+        style="@style/MioBottomItem"
+        android:background="@drawable/mio_nav_selected"
+        android:contentDescription="Home">
+
+        <ImageView
+            android:layout_width="27dp"
+            android:layout_height="27dp"
+            android:src="@drawable/ic_mio_home"
+            android:tint="#8FE7FF" />
+
+        <TextView
+            style="@style/MioBottomLabelSelected"
+            android:text="Home" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/nav_chats"
+        style="@style/MioBottomItem"
+        android:contentDescription="Chats">
+
+        <ImageView
+            android:layout_width="27dp"
+            android:layout_height="27dp"
+            android:src="@drawable/ic_mio_chat"
+            android:tint="#7180B4" />
+
+        <TextView
+            style="@style/MioBottomLabel"
+            android:text="Chats" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/nav_tools"
+        style="@style/MioBottomItem"
+        android:contentDescription="Tools">
+
+        <ImageView
+            android:layout_width="27dp"
+            android:layout_height="27dp"
+            android:src="@drawable/ic_mio_tools"
+            android:tint="#7180B4" />
+
+        <TextView
+            style="@style/MioBottomLabel"
+            android:text="Tools" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/nav_settings"
+        style="@style/MioBottomItem"
+        android:contentDescription="Settings">
+
+        <ImageView
+            android:layout_width="27dp"
+            android:layout_height="27dp"
+            android:src="@drawable/ic_mio_settings"
+            android:tint="#7180B4" />
+
+        <TextView
+            style="@style/MioBottomLabel"
+            android:text="Settings" />
+    </LinearLayout>
+
+</LinearLayout>
