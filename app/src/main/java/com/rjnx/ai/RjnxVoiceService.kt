@@ -15,7 +15,6 @@ import org.vosk.Model
 import org.vosk.Recognizer
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
 import java.util.concurrent.atomic.AtomicBoolean
 
 class RjnxVoiceService : Service() {
@@ -59,14 +58,17 @@ class RjnxVoiceService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.getBooleanExtra("MIO_TAP_TO_SPEAK", false) == true) {
+            enterCommandMode()
+            announceWake()
+        }
         return START_STICKY
     }
 
     private fun prepareModel() {
         val modelDir = File(filesDir, MODEL_DIR)
-        if (!modelDir.exists()) {
-            copyAssetFolder(MODEL_DIR, modelDir)
-        }
+        if (!modelDir.exists()) copyAssetFolder(MODEL_DIR, modelDir)
+
         model = Model(modelDir.absolutePath)
         wakeRecognizer = Recognizer(
             model,
@@ -118,7 +120,6 @@ class RjnxVoiceService : Service() {
                         announceWake()
                     }
                 } else {
-                    // Vosk may recognize the wake phrase only in a partial result.
                     val partial = parseText(wakeRecognizer?.partialResult?.toString() ?: "")
                     if (isMioWake(partial)) {
                         enterCommandMode()
@@ -131,18 +132,16 @@ class RjnxVoiceService : Service() {
 
     private fun announceWake() {
         updateNotification("Mio heard you — listening…")
+
         val intent = Intent(this, MainActivity::class.java).apply {
-            addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP
-            )
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             putExtra("MIO_WAKE", true)
             putExtra("MIO_COMMAND", "")
         }
+
         try {
             startActivity(intent)
         } catch (_: Exception) {
-            // Keep listening if Android does not allow an Activity launch.
         }
     }
 
@@ -165,7 +164,7 @@ class RjnxVoiceService : Service() {
         updateNotification("Mio heard you — listening…")
 
         val intent = Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             putExtra("MIO_WAKE", true)
             putExtra("MIO_COMMAND", command)
         }
@@ -204,6 +203,7 @@ class RjnxVoiceService : Service() {
             val childAsset = "$assetFolder/$child"
             val childDest = File(destination, child)
             val nested = assets.list(childAsset).orEmpty()
+
             if (nested.isNotEmpty()) {
                 copyAssetFolder(childAsset, childDest)
             } else {
