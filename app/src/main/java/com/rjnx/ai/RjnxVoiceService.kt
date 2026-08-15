@@ -36,6 +36,7 @@ class RjnxVoiceService : Service() {
     private val running = AtomicBoolean(false)
     private var commandMode = false
     private var chatListenRequested = false
+    private var tapRequested = false
 
     override fun onCreate() {
         super.onCreate()
@@ -54,9 +55,12 @@ class RjnxVoiceService : Service() {
         Thread {
             try {
                 prepareModel()
-                if (chatListenRequested) {
+
+                if (chatListenRequested || tapRequested) {
                     enterCommandMode()
+                    if (tapRequested && !chatListenRequested) announceWake()
                 }
+
                 startAudioLoop()
             } catch (_: Exception) {
                 stopAudioLoop()
@@ -67,15 +71,19 @@ class RjnxVoiceService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.getBooleanExtra(EXTRA_CHAT_LISTEN, false) == true) {
             chatListenRequested = true
-            if (model != null) {
-                enterCommandMode()
-            }
+            tapRequested = false
+            if (model != null) enterCommandMode()
         }
 
         if (intent?.getBooleanExtra("MIO_TAP_TO_SPEAK", false) == true) {
-            enterCommandMode()
-            announceWake()
+            tapRequested = true
+            chatListenRequested = false
+            if (model != null) {
+                enterCommandMode()
+                announceWake()
+            }
         }
+
         return START_STICKY
     }
 
@@ -123,11 +131,10 @@ class RjnxVoiceService : Service() {
                     if (text.isNotBlank()) {
                         if (chatListenRequested) {
                             deliverChatVoice(text)
-                            enterWakeMode()
                         } else {
                             deliverCommand(text)
-                            enterWakeMode()
                         }
+                        enterWakeMode()
                     }
                 }
             } else {
@@ -156,15 +163,18 @@ class RjnxVoiceService : Service() {
             putExtra("MIO_VOICE_TEXT", text)
         })
         chatListenRequested = false
+        tapRequested = false
     }
 
     private fun announceWake() {
         updateNotification("Mio heard you — listening…")
+
         val intent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             putExtra("MIO_WAKE", true)
             putExtra("MIO_COMMAND", "")
         }
+
         try { startActivity(intent) } catch (_: Exception) {}
     }
 
@@ -172,7 +182,10 @@ class RjnxVoiceService : Service() {
         commandMode = true
         commandRecognizer?.close()
         commandRecognizer = model?.let { Recognizer(it, SAMPLE_RATE) }
-        updateNotification(if (chatListenRequested) "Mio is listening for Chat…" else "Mio is listening…")
+        updateNotification(
+            if (chatListenRequested) "Mio is listening for Chat…"
+            else "Mio is listening…"
+        )
     }
 
     private fun enterWakeMode() {
@@ -180,17 +193,21 @@ class RjnxVoiceService : Service() {
         commandRecognizer?.close()
         commandRecognizer = null
         wakeRecognizer?.reset()
+        chatListenRequested = false
+        tapRequested = false
         updateNotification("Mio is ready in the background")
     }
 
     private fun deliverCommand(command: String) {
-        updateNotification("Mio heard you — listening…")
+        updateNotification("Mio heard you")
+
         val intent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             putExtra("MIO_WAKE", true)
             putExtra("MIO_COMMAND", command)
         }
-        startActivity(intent)
+
+        try { startActivity(intent) } catch (_: Exception) {}
     }
 
     private fun isMioWake(text: String): Boolean {
@@ -204,7 +221,9 @@ class RjnxVoiceService : Service() {
 
     private fun parseText(json: String): String = try {
         JSONObject(json).optString("text").trim()
-    } catch (_: Exception) { "" }
+    } catch (_: Exception) {
+        ""
+    }
 
     private fun copyAssetFolder(assetFolder: String, destination: File) {
         destination.mkdirs()
