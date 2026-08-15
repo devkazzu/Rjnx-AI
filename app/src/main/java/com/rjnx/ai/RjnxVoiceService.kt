@@ -20,6 +20,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 class RjnxVoiceService : Service() {
 
     companion object {
+        const val ACTION_CHAT_VOICE_RESULT = "com.rjnx.ai.CHAT_VOICE_RESULT"
+        const val EXTRA_CHAT_LISTEN = "MIO_CHAT_LISTEN"
+
         private const val CHANNEL_ID = "rjnx_background"
         private const val NOTIFICATION_ID = 3001
         private const val MODEL_DIR = "vosk-model-small-en-in-0.4"
@@ -32,6 +35,7 @@ class RjnxVoiceService : Service() {
     private var commandRecognizer: Recognizer? = null
     private val running = AtomicBoolean(false)
     private var commandMode = false
+    private var chatListenRequested = false
 
     override fun onCreate() {
         super.onCreate()
@@ -50,6 +54,9 @@ class RjnxVoiceService : Service() {
         Thread {
             try {
                 prepareModel()
+                if (chatListenRequested) {
+                    enterCommandMode()
+                }
                 startAudioLoop()
             } catch (_: Exception) {
                 stopAudioLoop()
@@ -58,6 +65,13 @@ class RjnxVoiceService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.getBooleanExtra(EXTRA_CHAT_LISTEN, false) == true) {
+            chatListenRequested = true
+            if (model != null) {
+                enterCommandMode()
+            }
+        }
+
         if (intent?.getBooleanExtra("MIO_TAP_TO_SPEAK", false) == true) {
             enterCommandMode()
             announceWake()
@@ -107,8 +121,13 @@ class RjnxVoiceService : Service() {
                 if (accepted) {
                     val text = parseText(commandRecognizer?.getResult()?.toString() ?: "")
                     if (text.isNotBlank()) {
-                        deliverCommand(text)
-                        enterWakeMode()
+                        if (chatListenRequested) {
+                            deliverChatVoice(text)
+                            enterWakeMode()
+                        } else {
+                            deliverCommand(text)
+                            enterWakeMode()
+                        }
                     }
                 }
             } else {
@@ -130,26 +149,30 @@ class RjnxVoiceService : Service() {
         }
     }
 
+    private fun deliverChatVoice(text: String) {
+        updateNotification("Mio heard: $text")
+        sendBroadcast(Intent(ACTION_CHAT_VOICE_RESULT).apply {
+            setPackage(packageName)
+            putExtra("MIO_VOICE_TEXT", text)
+        })
+        chatListenRequested = false
+    }
+
     private fun announceWake() {
         updateNotification("Mio heard you — listening…")
-
         val intent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             putExtra("MIO_WAKE", true)
             putExtra("MIO_COMMAND", "")
         }
-
-        try {
-            startActivity(intent)
-        } catch (_: Exception) {
-        }
+        try { startActivity(intent) } catch (_: Exception) {}
     }
 
     private fun enterCommandMode() {
         commandMode = true
         commandRecognizer?.close()
         commandRecognizer = model?.let { Recognizer(it, SAMPLE_RATE) }
-        updateNotification("Mio is listening…")
+        updateNotification(if (chatListenRequested) "Mio is listening for Chat…" else "Mio is listening…")
     }
 
     private fun enterWakeMode() {
@@ -162,7 +185,6 @@ class RjnxVoiceService : Service() {
 
     private fun deliverCommand(command: String) {
         updateNotification("Mio heard you — listening…")
-
         val intent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             putExtra("MIO_WAKE", true)
@@ -180,13 +202,9 @@ class RjnxVoiceService : Service() {
             normalized.startsWith("mio ")
     }
 
-    private fun parseText(json: String): String {
-        return try {
-            JSONObject(json).optString("text").trim()
-        } catch (_: Exception) {
-            ""
-        }
-    }
+    private fun parseText(json: String): String = try {
+        JSONObject(json).optString("text").trim()
+    } catch (_: Exception) { "" }
 
     private fun copyAssetFolder(assetFolder: String, destination: File) {
         destination.mkdirs()
@@ -237,14 +255,15 @@ class RjnxVoiceService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(NotificationManager::class.java)
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "RJNX Background Assistant",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Keeps Mio ready for background assistant features."
-            }
-            manager.createNotificationChannel(channel)
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    CHANNEL_ID,
+                    "RJNX Background Assistant",
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = "Keeps Mio ready for background assistant features."
+                }
+            )
         }
     }
 

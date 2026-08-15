@@ -1,17 +1,21 @@
 package com.rjnx.ai
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.InputMethodManager
-import android.content.Context
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 
 class ChatActivity : AppCompatActivity() {
 
@@ -19,6 +23,17 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var input: EditText
     private lateinit var scroll: ScrollView
     private lateinit var send: TextView
+
+    private val voiceReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val text = intent?.getStringExtra("MIO_VOICE_TEXT").orEmpty().trim()
+            if (text.isNotEmpty()) {
+                input.setText(text)
+                input.setSelection(input.text.length)
+                sendMessage()
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,9 +54,7 @@ class ChatActivity : AppCompatActivity() {
         send.setOnClickListener { sendMessage() }
 
         findViewById<View>(R.id.chat_mic).setOnClickListener {
-            input.requestFocus()
-            (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-                .showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
+            startChatVoiceRecognition()
         }
 
         input.setOnEditorActionListener { _, _, _ ->
@@ -52,12 +65,49 @@ class ChatActivity : AppCompatActivity() {
         addBotMessage("Hello Raju! 👋\nHow can I help you today?")
     }
 
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(
+            this,
+            voiceReceiver,
+            IntentFilter(RjnxVoiceService.ACTION_CHAT_VOICE_RESULT),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    override fun onStop() {
+        unregisterReceiver(voiceReceiver)
+        super.onStop()
+    }
+
+    private fun startChatVoiceRecognition() {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.RECORD_AUDIO
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), 402)
+            return
+        }
+
+        input.hint = "Listening…"
+        val serviceIntent = Intent(this, RjnxVoiceService::class.java).apply {
+            putExtra(RjnxVoiceService.EXTRA_CHAT_LISTEN, true)
+        }
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
+    }
+
     private fun sendMessage() {
         val message = input.text.toString().trim()
         if (message.isEmpty()) return
 
         addUserMessage(message)
         input.text.clear()
+        input.hint = "Type a message..."
         setSending(true)
 
         OpenRouterClient.ask(message) { answer ->
@@ -81,15 +131,13 @@ class ChatActivity : AppCompatActivity() {
             setPadding(20, 13, 20, 13)
             background = getDrawable(R.drawable.mio_chat_user_bubble)
         }
-
-        val params = LinearLayout.LayoutParams(
+        chatContainer.addView(bubble, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply {
             gravity = Gravity.END
             setMargins(50, 8, 14, 8)
-        }
-        chatContainer.addView(bubble, params)
+        })
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
     }
 
@@ -123,7 +171,6 @@ class ChatActivity : AppCompatActivity() {
         ).apply {
             setMargins(0, 0, 50, 0)
         })
-
         chatContainer.addView(row)
     }
 }
