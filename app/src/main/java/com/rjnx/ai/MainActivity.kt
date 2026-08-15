@@ -594,7 +594,7 @@ class MainActivity : AppCompatActivity() {
 
         val title = TextView(this).apply {
             text = "MIO"
-            textColor = android.graphics.Color.WHITE
+            setTextColor(android.graphics.Color.WHITE)
             textSize = 30f
             typeface = android.graphics.Typeface.create(
                 android.graphics.Typeface.DEFAULT,
@@ -614,7 +614,7 @@ class MainActivity : AppCompatActivity() {
 
         val subtitle = TextView(this).apply {
             text = "Your AI. Your assistant."
-            textColor = android.graphics.Color.rgb(166, 174, 205)
+            setTextColor(android.graphics.Color.rgb(166, 174, 205))
             textSize = 13f
             gravity = Gravity.CENTER
             alpha = 0f
