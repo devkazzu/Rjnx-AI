@@ -12,6 +12,12 @@ import android.speech.tts.TextToSpeech
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.EditText
+import android.widget.Button
+import android.view.Gravity
+import android.view.inputmethod.InputMethodManager
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -248,7 +254,74 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openTranslate() {
-        openWebsite("https://translate.google.com")
+        val input = EditText(this).apply {
+            hint = "Enter text to translate"
+            minLines = 4
+            gravity = Gravity.TOP or Gravity.START
+            setPadding(32, 24, 32, 24)
+        }
+
+        val builder = AlertDialog.Builder(this)
+            .setTitle("🌐 Translate")
+            .setView(input)
+            .setNegativeButton("Cancel", null)
+            .setNeutralButton("Copy", null)
+            .setPositiveButton("Translate", null)
+
+        val dialog = builder.create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val text = input.text.toString().trim()
+                if (text.isBlank()) {
+                    input.error = "Enter text first"
+                    return@setOnClickListener
+                }
+
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).isEnabled = false
+                tapToSpeak.text = "🌐  Translating..."
+
+                val prompt =
+                    "Translate the following text to Hindi. Return only the translated text.\n\n$text"
+
+                OpenRouterClient.ask(prompt) { answer ->
+                    runOnUiThread {
+                        dialog.dismiss()
+                        showTranslationResult(answer)
+                    }
+                }
+            }
+
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                val text = input.text.toString()
+                if (text.isNotBlank()) {
+                    val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Mio Translation", text))
+                    Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun showTranslationResult(result: String) {
+        tapToSpeak.text = "🌐  $result"
+
+        AlertDialog.Builder(this)
+            .setTitle("🌐 Translation")
+            .setMessage(result)
+            .setNegativeButton("Close", null)
+            .setNeutralButton("Copy") { _, _ ->
+                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("Mio Translation", result))
+                Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
+            }
+            .setPositiveButton("Speak") { _, _ ->
+                speak(result)
+            }
+            .show()
     }
 
     private fun openWebsite(url: String) {
