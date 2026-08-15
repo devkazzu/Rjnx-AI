@@ -10,6 +10,7 @@ import android.speech.tts.TextToSpeech
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
+import android.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import java.util.Locale
@@ -64,6 +65,25 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.action_camera).setOnClickListener {
             openCamera()
         }
+
+        // STEP 5 — Quick Actions
+        bindQuickAction(R.id.quick_action_summary) {
+            runQuickPrompt("Summarize the current screen. If screen content is unavailable, ask me to paste or upload it.")
+        }
+
+        bindQuickAction(R.id.quick_action_solve) {
+            runQuickPrompt("Solve this problem step by step. If no problem is provided, ask me to enter or upload it.")
+        }
+
+        bindQuickAction(R.id.quick_action_code) {
+            runQuickPrompt("Help me code. Ask what I want to build or fix, then provide a clear solution.")
+        }
+
+        bindQuickAction(R.id.quick_action_story) {
+            runQuickPrompt("Tell me a short engaging story.")
+        }
+
+        setupQuickActionsByText()
 
         findViewById<View>(R.id.btn_settings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
@@ -158,6 +178,48 @@ class MainActivity : AppCompatActivity() {
             startForegroundService(serviceIntent)
         } else {
             startService(serviceIntent)
+        }
+    }
+
+    private fun bindQuickAction(rowId: Int, action: () -> Unit) {
+        findViewById<View?>(rowId)?.setOnClickListener { action() }
+    }
+
+    private fun setupQuickActionsByText() {
+        val root = findViewById<View>(android.R.id.content)
+        setQuickActionClick(root, "Summarize Screen") {
+            runQuickPrompt("Summarize the current screen. If screen content is unavailable, ask me to paste or upload it.")
+        }
+        setQuickActionClick(root, "Solve Anything") {
+            runQuickPrompt("Solve this problem step by step. If no problem is provided, ask me to enter or upload it.")
+        }
+        setQuickActionClick(root, "Help me Code") {
+            runQuickPrompt("Help me code. Ask what I want to build or fix, then provide a clear solution.")
+        }
+        setQuickActionClick(root, "Tell me a Story") {
+            runQuickPrompt("Tell me a short engaging story.")
+        }
+    }
+
+    private fun setQuickActionClick(view: View, label: String, action: () -> Unit) {
+        if (view is TextView && view.text.toString() == label) {
+            (view.parent as? View)?.setOnClickListener { action() }
+            return
+        }
+        if (view is android.view.ViewGroup) {
+            for (i in 0 until view.childCount) {
+                setQuickActionClick(view.getChildAt(i), label, action)
+            }
+        }
+    }
+
+    private fun runQuickPrompt(prompt: String) {
+        tapToSpeak.text = "🤖  Thinking..."
+        OpenRouterClient.ask(prompt) { answer ->
+            runOnUiThread {
+                tapToSpeak.text = "🤖  $answer"
+                speak(answer)
+            }
         }
     }
 
