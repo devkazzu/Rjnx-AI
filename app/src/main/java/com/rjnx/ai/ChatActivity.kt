@@ -18,6 +18,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var chatContainer: LinearLayout
     private lateinit var input: EditText
     private lateinit var scroll: ScrollView
+    private lateinit var send: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,6 +27,7 @@ class ChatActivity : AppCompatActivity() {
         chatContainer = findViewById(R.id.chat_container)
         input = findViewById(R.id.chat_input)
         scroll = findViewById(R.id.chat_scroll)
+        send = findViewById(R.id.chat_send)
 
         findViewById<View>(R.id.chat_back).setOnClickListener { finish() }
 
@@ -34,15 +36,17 @@ class ChatActivity : AppCompatActivity() {
             addBotMessage("Hello Raju! 👋\nHow can I help you today?")
         }
 
-        findViewById<View>(R.id.chat_send).setOnClickListener {
-            sendMessage()
-        }
+        send.setOnClickListener { sendMessage() }
 
         findViewById<View>(R.id.chat_mic).setOnClickListener {
-            // Existing Vosk voice flow can be connected here.
             input.requestFocus()
             (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
                 .showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
+        }
+
+        input.setOnEditorActionListener { _, _, _ ->
+            sendMessage()
+            true
         }
 
         addBotMessage("Hello Raju! 👋\nHow can I help you today?")
@@ -54,12 +58,18 @@ class ChatActivity : AppCompatActivity() {
 
         addUserMessage(message)
         input.text.clear()
+        setSending(true)
 
-        // UI is ready for the existing OpenRouter integration.
-        // The API call should be connected here without changing this screen.
-        addBotMessage("I'm ready, Raju. 🤖\nYour OpenRouter response can appear here.")
+        OpenRouterClient.ask(message) { answer ->
+            addBotMessage(answer)
+            setSending(false)
+            scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+        }
+    }
 
-        scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+    private fun setSending(sending: Boolean) {
+        send.isEnabled = !sending
+        send.alpha = if (sending) 0.45f else 1f
     }
 
     private fun addUserMessage(message: String) {
@@ -75,10 +85,12 @@ class ChatActivity : AppCompatActivity() {
         val params = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
-        )
-        params.gravity = Gravity.END
-        params.setMargins(50, 8, 14, 8)
+        ).apply {
+            gravity = Gravity.END
+            setMargins(50, 8, 14, 8)
+        }
         chatContainer.addView(bubble, params)
+        scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
     }
 
     private fun addBotMessage(message: String) {
