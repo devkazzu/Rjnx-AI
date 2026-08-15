@@ -67,22 +67,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         // STEP 5 — Quick Actions
-        bindQuickAction(R.id.quick_action_summary) {
-            runQuickPrompt("Summarize the current screen. If screen content is unavailable, ask me to paste or upload it.")
-        }
-
-        bindQuickAction(R.id.quick_action_solve) {
-            runQuickPrompt("Solve this problem step by step. If no problem is provided, ask me to enter or upload it.")
-        }
-
-        bindQuickAction(R.id.quick_action_code) {
-            runQuickPrompt("Help me code. Ask what I want to build or fix, then provide a clear solution.")
-        }
-
-        bindQuickAction(R.id.quick_action_story) {
-            runQuickPrompt("Tell me a short engaging story.")
-        }
-
         setupQuickActionsByText()
 
         findViewById<View>(R.id.btn_settings).setOnClickListener {
@@ -179,10 +163,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             startService(serviceIntent)
         }
-    }
-
-    private fun bindQuickAction(rowId: Int, action: () -> Unit) {
-        findViewById<View?>(rowId)?.setOnClickListener { action() }
     }
 
     private fun setupQuickActionsByText() {
