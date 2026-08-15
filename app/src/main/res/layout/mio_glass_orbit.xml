@@ -14,6 +14,7 @@
         android:paddingEnd="20dp"
         android:paddingBottom="20dp">
 
+        <!-- Top-right controls: Settings + Help Center -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -24,29 +25,34 @@
                 android:layout_width="46dp"
                 android:layout_height="46dp"
                 android:background="@drawable/mio_glass_circle"
-                android:src="@android:drawable/ic_menu_preferences"
+                android:src="@drawable/ic_mio_settings"
                 android:tint="#EAF0FF"
-                android:contentDescription="Settings" />
+                android:contentDescription="Settings"
+                android:clickable="true"
+                android:focusable="true" />
 
             <Space
                 android:layout_width="10dp"
                 android:layout_height="1dp" />
 
             <ImageButton
-                android:id="@+id/btn_profile"
+                android:id="@+id/btn_help_center"
                 android:layout_width="46dp"
                 android:layout_height="46dp"
                 android:background="@drawable/mio_glass_circle"
-                android:src="@android:drawable/ic_menu_myplaces"
+                android:src="@drawable/ic_mio_help"
                 android:tint="#EAF0FF"
-                android:contentDescription="Profile" />
+                android:contentDescription="Help Center"
+                android:clickable="true"
+                android:focusable="true" />
         </LinearLayout>
 
-        <TextView
+        <!-- Dynamic greeting -->
+        <com.rjnx.MioGreetingTextView
+            android:id="@+id/mio_greeting"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:text="Good Afternoon,"
             android:textColor="#E8ECFF"
             android:textSize="21sp" />
 
@@ -69,7 +75,6 @@
             android:layout_width="match_parent"
             android:layout_height="300dp"
             android:layout_marginTop="8dp">
-        
 
             <View
                 android:layout_width="250dp"
@@ -111,12 +116,12 @@
             android:alignmentMode="alignMargins"
             android:columnOrderPreserved="false">
 
-            <TextView android:id="@+id/action_voice" style="@style/MioFeature" android:text="🎙\nVoice" />
-            <TextView android:id="@+id/action_vision" style="@style/MioFeature" android:text="◉\nVision" />
-            <TextView android:id="@+id/action_translate" style="@style/MioFeature" android:text="文\nTranslate" />
-            <TextView android:id="@+id/action_chat" style="@style/MioFeature" android:text="💬\nAI Chat" />
-            <TextView android:id="@+id/action_youtube" style="@style/MioFeature" android:text="▶\nYouTube" />
-            <TextView android:id="@+id/action_camera" style="@style/MioFeature" android:text="▣\nCamera" />
+            <TextView android:id="@+id/action_voice" style="@style/MioFeature" android:text="🎙&#10;Voice" />
+            <TextView android:id="@+id/action_vision" style="@style/MioFeature" android:text="◉&#10;Vision" />
+            <TextView android:id="@+id/action_translate" style="@style/MioFeature" android:text="文&#10;Translate" />
+            <TextView android:id="@+id/action_chat" style="@style/MioFeature" android:text="💬&#10;AI Chat" />
+            <TextView android:id="@+id/action_youtube" style="@style/MioFeature" android:text="▶&#10;YouTube" />
+            <TextView android:id="@+id/action_camera" style="@style/MioFeature" android:text="▣&#10;Camera" />
         </GridLayout>
 
         <LinearLayout
@@ -154,6 +159,36 @@
                 android:id="@+id/quick_story"
                 style="@style/MioQuickAction"
                 android:text="📖   Tell me a Story                               ›" />
+        </LinearLayout>
+
+        <!-- Bottom navigation -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="76dp"
+            android:layout_marginTop="18dp"
+            android:background="@drawable/mio_glass_card"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/nav_home"
+                style="@style/MioNavItem"
+                android:text="⌂&#10;Home" />
+
+            <TextView
+                android:id="@+id/nav_chats"
+                style="@style/MioNavItem"
+                android:text="◌&#10;Chats" />
+
+            <TextView
+                android:id="@+id/nav_tools"
+                style="@style/MioNavItem"
+                android:text="✣&#10;Tools" />
+
+            <TextView
+                android:id="@+id/nav_settings"
+                style="@style/MioNavItem"
+                android:text="⚙&#10;Settings" />
         </LinearLayout>
 
     </LinearLayout>
