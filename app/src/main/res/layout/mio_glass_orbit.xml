@@ -3,6 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#05071D"
+    android:background="@drawable/mio_background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -68,8 +69,8 @@
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="300dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/mio_background">
+            android:layout_marginTop="8dp">
+        
 
             <View
                 android:layout_width="250dp"
