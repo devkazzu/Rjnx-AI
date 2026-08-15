@@ -151,7 +151,7 @@
                 android:layout_weight="1"
                 android:background="@android:color/transparent"
                 android:hint="Type a message..."
-                android:hintTextColor="#B6B9CC"
+                android:textColorHint="#B6B9CC"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
                 android:singleLine="true"
