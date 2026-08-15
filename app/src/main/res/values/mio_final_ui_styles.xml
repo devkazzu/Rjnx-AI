@@ -1,0 +1,94 @@
+<resources>
+    <style name="MioFeatureCell">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">112dp</item>
+        <item name="android:layout_columnWeight">1</item>
+        <item name="android:gravity">center</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <style name="MioFeatureIcon">
+        <item name="android:layout_width">58dp</item>
+        <item name="android:layout_height">58dp</item>
+        <item name="android:padding">15dp</item>
+        <item name="android:background">@drawable/mio_glass_circle</item>
+        <item name="android:tint">#F4F6FF</item>
+    </style>
+
+    <style name="MioFeatureLabel">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">7dp</item>
+        <item name="android:textColor">#DDE5FF</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <style name="MioQuickRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">54dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:paddingEnd">6dp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <style name="MioQuickIcon">
+        <item name="android:layout_width">38dp</item>
+        <item name="android:layout_height">38dp</item>
+        <item name="android:padding">9dp</item>
+        <item name="android:background">@drawable/mio_glass_circle</item>
+        <item name="android:tint">#EDEFFF</item>
+    </style>
+
+    <style name="MioQuickText">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_marginStart">12dp</item>
+        <item name="android:textColor">#E9EDFF</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <style name="MioArrow">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">#C8D0F7</item>
+        <item name="android:textSize">28sp</item>
+    </style>
+
+    <style name="MioNavCell">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">68dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:gravity">center</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:padding">5dp</item>
+    </style>
+
+    <style name="MioNavCellSelected">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">68dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:gravity">center</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:padding">5dp</item>
+        <item name="android:background">@drawable/mio_nav_selected</item>
+    </style>
+
+    <style name="MioNavIcon">
+        <item name="android:layout_width">28dp</item>
+        <item name="android:layout_height">28dp</item>
+        <item name="android:tint">#C6D0F8</item>
+    </style>
+
+    <style name="MioNavText">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">3dp</item>
+        <item name="android:textColor">#B9C5F0</item>
+        <item name="android:textSize">11sp</item>
+    </style>
+</resources>
