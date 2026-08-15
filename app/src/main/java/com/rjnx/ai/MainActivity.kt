@@ -16,9 +16,14 @@ import android.os.Build
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.OvershootInterpolator
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.Button
 import android.view.Gravity
 import android.view.inputmethod.InputMethodManager
@@ -92,6 +97,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.mio_glass_orbit)
+        playMioStartupAnimation()
 
         tts = TextToSpeech(this) { status ->
             isTtsReady = status == TextToSpeech.SUCCESS
@@ -549,6 +555,133 @@ class MainActivity : AppCompatActivity() {
         ) {
             startTapToSpeak()
         }
+    }
+
+
+    /**
+     * Premium Mio startup animation.
+     * Kept fully programmatic so no extra XML/drawable files are required.
+     */
+    private fun playMioStartupAnimation() {
+        val root = findViewById<View>(android.R.id.content) as? android.view.ViewGroup ?: return
+
+        val overlay = FrameLayout(this).apply {
+            setBackgroundColor(android.graphics.Color.rgb(5, 7, 16))
+            alpha = 1f
+            isClickable = true
+            isFocusable = true
+        }
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            alpha = 0f
+            scaleX = 0.72f
+            scaleY = 0.72f
+        }
+
+        val logo = ImageView(this).apply {
+            setImageResource(R.drawable.ic_mio)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            contentDescription = "Mio"
+        }
+
+        val logoSize = (132 * resources.displayMetrics.density).toInt()
+        content.addView(
+            logo,
+            LinearLayout.LayoutParams(logoSize, logoSize)
+        )
+
+        val title = TextView(this).apply {
+            text = "MIO"
+            textColor = android.graphics.Color.WHITE
+            textSize = 30f
+            typeface = android.graphics.Typeface.create(
+                android.graphics.Typeface.DEFAULT,
+                android.graphics.Typeface.BOLD
+            )
+            gravity = Gravity.CENTER
+            letterSpacing = 0.18f
+            setPadding(0, 18, 0, 0)
+        }
+        content.addView(
+            title,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        val subtitle = TextView(this).apply {
+            text = "Your AI. Your assistant."
+            textColor = android.graphics.Color.rgb(166, 174, 205)
+            textSize = 13f
+            gravity = Gravity.CENTER
+            alpha = 0f
+            setPadding(0, 8, 0, 0)
+        }
+        content.addView(
+            subtitle,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        overlay.addView(
+            content,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+        root.addView(
+            overlay,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+
+        content.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(650L)
+            .setInterpolator(OvershootInterpolator(1.15f))
+            .withEndAction {
+                subtitle.animate()
+                    .alpha(1f)
+                    .setDuration(280L)
+                    .start()
+
+                content.animate()
+                    .scaleX(1.035f)
+                    .scaleY(1.035f)
+                    .setDuration(180L)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .withEndAction {
+                        content.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(180L)
+                            .setInterpolator(AccelerateDecelerateInterpolator())
+                            .withEndAction {
+                                overlay.animate()
+                                    .alpha(0f)
+                                    .setStartDelay(320L)
+                                    .setDuration(420L)
+                                    .setInterpolator(AccelerateDecelerateInterpolator())
+                                    .withEndAction {
+                                        root.removeView(overlay)
+                                    }
+                                    .start()
+                            }
+                            .start()
+                    }
+                    .start()
+            }
+            .start()
     }
 
     override fun onDestroy() {
