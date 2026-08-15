@@ -2,6 +2,8 @@ package com.rjnx.ai
 
 import android.Manifest
 import android.content.Intent
+import android.graphics.Bitmap
+import android.provider.MediaStore
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -45,7 +47,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<View>(R.id.action_vision).setOnClickListener {
-            openCamera()
+            openVisionCamera()
         }
 
         findViewById<View>(R.id.action_translate).setOnClickListener {
@@ -203,6 +205,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun openVisionCamera() {
+        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        try {
+            startActivityForResult(intent, REQUEST_VISION_CAMERA)
+        } catch (_: Exception) {
+            Toast.makeText(this, "Camera app not available", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode != REQUEST_VISION_CAMERA || resultCode != RESULT_OK) return
+
+        val bitmap = data?.extras?.get("data") as? Bitmap
+        if (bitmap == null) {
+            Toast.makeText(this, "Could not get the captured image", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        tapToSpeak.text = "👁  Analyzing image..."
+
+        OpenRouterClient.askVision(
+            bitmap,
+            "Analyze this image and explain what you see. Be concise but useful."
+        ) { answer ->
+            runOnUiThread {
+                tapToSpeak.text = "👁  $answer"
+                speak(answer)
+            }
+        }
+    }
+
     private fun openCamera() {
         val intent = Intent("android.media.action.IMAGE_CAPTURE")
         try {
@@ -248,5 +283,6 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val REQUEST_AUDIO = 401
+        private const val REQUEST_VISION_CAMERA = 602
     }
 }
