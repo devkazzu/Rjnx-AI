@@ -1,0 +1,57 @@
+<resources>
+    <style name="MioFeatureContainer">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">105dp</item>
+        <item name="android:layout_columnWeight">1</item>
+        <item name="android:layout_margin">5dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+    <style name="MioFeatureIcon">
+        <item name="android:layout_width">72dp</item>
+        <item name="android:layout_height">72dp</item>
+        <item name="android:padding">19dp</item>
+        <item name="android:background">@drawable/mio_glass_circle</item>
+        <item name="android:tint">#FFFFFF</item>
+    </style>
+    <style name="MioFeatureLabel">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">5dp</item>
+        <item name="android:textColor">#E8EAFF</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+    <style name="MioQuickRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">54dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+    <style name="MioQuickIcon">
+        <item name="android:layout_width">42dp</item>
+        <item name="android:layout_height">42dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textColor">#DDE5FF</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:background">@drawable/mio_glass_circle</item>
+    </style>
+    <style name="MioQuickText">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_marginStart">12dp</item>
+        <item name="android:textColor">#E9ECFF</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+    <style name="MioArrow">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">#C8D1FF</item>
+        <item name="android:textSize">30sp</item>
+    </style>
+</resources>
