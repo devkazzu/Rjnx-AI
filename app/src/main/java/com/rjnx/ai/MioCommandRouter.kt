@@ -273,11 +273,17 @@ object MioCommandRouter {
         (context.getSystemService(Context.AUDIO_SERVICE) as AudioManager).adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, AudioManager.FLAG_SHOW_UI)
         return true
     }
-    private fun flashlight(context: Context, on: Boolean): Boolean = try {
+    private fun flashlight(context: Context, on: Boolean): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false
-        val manager = context.getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
-        manager.setTorchMode(manager.cameraIdList.firstOrNull() ?: return false, on); true
-    } catch (_: Exception) { false }
+        return try {
+            val manager = context.getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
+            val cameraId = manager.cameraIdList.firstOrNull() ?: return false
+            manager.setTorchMode(cameraId, on)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
     private fun openPackageOrWeb(context: Context, packageName: String, fallback: String): Boolean {
         val launch = context.packageManager.getLaunchIntentForPackage(packageName)
         if (launch != null) { launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); context.startActivity(launch); return true }

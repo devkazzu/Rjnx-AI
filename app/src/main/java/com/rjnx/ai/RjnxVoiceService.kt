@@ -147,16 +147,17 @@ class RjnxVoiceService : Service() {
                         enterWakeMode()
                     }
                 }
-            } else if (prefs.getBoolean("wake_word", true) && wakeRecognizer != null) {
-                val accepted = wakeRecognizer.acceptWaveForm(buffer, count)
+            } else if (prefs.getBoolean("wake_word", true)) {
+                val recognizer = wakeRecognizer ?: continue
+                val accepted = recognizer.acceptWaveForm(buffer, count)
                 if (accepted) {
-                    val text = parseText(wakeRecognizer?.getResult()?.toString() ?: "")
+                    val text = parseText(recognizer.getResult()?.toString() ?: "")
                     if (isMioWake(text)) {
                         enterCommandMode()
                         announceWake()
                     }
                 } else {
-                    val partial = parseText(wakeRecognizer?.partialResult?.toString() ?: "")
+                    val partial = parseText(recognizer.partialResult?.toString() ?: "")
                     if (isMioWake(partial)) {
                         enterCommandMode()
                         announceWake()
