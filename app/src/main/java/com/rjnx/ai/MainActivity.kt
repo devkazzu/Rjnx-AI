@@ -43,14 +43,14 @@ class MainActivity : AppCompatActivity() {
         handleVoiceIntent(intent)
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleVoiceIntent(intent)
     }
 
-    private fun handleVoiceIntent(intent: Intent?) {
-        if (intent?.getBooleanExtra("MIO_WAKE", false) != true) return
+    private fun handleVoiceIntent(intent: Intent) {
+        if (!intent.getBooleanExtra("MIO_WAKE", false)) return
 
         val command = intent.getStringExtra("MIO_COMMAND").orEmpty().trim()
 
@@ -74,6 +74,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun speak(text: String) {
         if (!isTtsReady || text.isBlank()) return
+
         val clean = text
             .replace(Regex("[*_`#]"), "")
             .replace(Regex("\\s+"), " ")
