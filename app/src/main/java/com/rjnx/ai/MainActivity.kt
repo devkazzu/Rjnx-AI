@@ -1,9 +1,10 @@
 package com.rjnx.ai
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
+import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.provider.MediaStore
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -29,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tapToSpeak: TextView
     private var tts: TextToSpeech? = null
     private var isTtsReady = false
+    private var pendingVisionPrompt: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,6 +92,14 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
+        findViewById<View>(R.id.nav_tools).setOnClickListener {
+            showTools()
+        }
+
+        findViewById<View>(R.id.btn_help_center).setOnClickListener {
+            showHelp()
+        }
+
         handleVoiceIntent(intent)
     }
 
@@ -139,12 +149,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun getSelectedLocale(): Locale {
-        val tag = getSharedPreferences("mio_settings", Context.MODE_PRIVATE)
-            .getString("tts_language", "en-IN") ?: "en-IN"
-        return Locale.forLanguageTag(tag)
-    }
-
     private fun speak(text: String) {
         if (!isTtsReady || text.isBlank()) return
 
@@ -167,6 +171,12 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        val settings = getSharedPreferences("mio_settings", Context.MODE_PRIVATE)
+        if (!settings.getBoolean("voice", true)) {
+            Toast.makeText(this, "Voice Assistant is OFF in Settings", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         tapToSpeak.text = "🎙  Listening..."
 
         val serviceIntent = Intent(this, RjnxVoiceService::class.java).apply {
@@ -182,18 +192,127 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupQuickActionsByText() {
         val root = findViewById<View>(android.R.id.content)
+
         setQuickActionClick(root, "Summarize Screen") {
-            runQuickPrompt("Summarize the current screen. If screen content is unavailable, ask me to paste or upload it.")
+            summarizeCurrentScreen()
         }
+
         setQuickActionClick(root, "Solve Anything") {
-            runQuickPrompt("Solve this problem step by step. If no problem is provided, ask me to enter or upload it.")
+            openVisionCameraWithPrompt(
+                "Solve the problem shown in this image. Explain the solution step by step."
+            )
         }
+
         setQuickActionClick(root, "Help me Code") {
-            runQuickPrompt("Help me code. Ask what I want to build or fix, then provide a clear solution.")
+            showTextPrompt(
+                "Help me Code",
+                "Describe what you want to build or fix."
+            ) { text ->
+                runQuickPrompt(
+                    "Act as a coding assistant. Help the user with this request. " +
+                        "Give practical code and explain the important parts.\n\n$text"
+                )
+            }
         }
+
         setQuickActionClick(root, "Tell me a Story") {
             runQuickPrompt("Tell me a short engaging story.")
         }
+    }
+
+    private fun getSelectedLocale(): Locale {
+        val tag = getSharedPreferences("mio_settings", Context.MODE_PRIVATE)
+            .getString("tts_language", "en-IN") ?: "en-IN"
+        return Locale.forLanguageTag(tag)
+    }
+
+    private fun showTools() {
+        val tools = arrayOf(
+            "📷 Vision / Solve Anything",
+            "🌐 Translate",
+            "💬 AI Chat",
+            "🎙 Voice Assistant",
+            "🔎 Web Search"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("Mio Tools")
+            .setItems(tools) { _, which ->
+                when (which) {
+                    0 -> openVisionCamera()
+                    1 -> openTranslate()
+                    2 -> startActivity(Intent(this, ChatActivity::class.java))
+                    3 -> startTapToSpeak()
+                    4 -> showTextPrompt("Web Search", "What do you want to search?") { q ->
+                        if (!MioCommandRouter.execute(this, "search $q")) {
+                            openWebsite("https://www.google.com/search?q=${Uri.encode(q)}")
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
+    private fun showHelp() {
+        AlertDialog.Builder(this)
+            .setTitle("Mio Help")
+            .setMessage(
+                "Try commands like:\\n\\n" +
+                    "• YouTube kholo\\n" +
+                    "• Chrome kholo\\n" +
+                    "• Mummy ko call karo\\n" +
+                    "• 7:30 PM ka alarm lagao\\n" +
+                    "• Hey Mio\\n\\n" +
+                    "You can also use Vision, Translate, Chat and Quick Actions."
+            )
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
+    private fun showTextPrompt(title: String, hint: String, onSubmit: (String) -> Unit) {
+        val edit = EditText(this).apply {
+            this.hint = hint
+            minLines = 3
+            setPadding(30, 20, 30, 20)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(edit)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Continue") { _, _ ->
+                val value = edit.text.toString().trim()
+                if (value.isNotEmpty()) onSubmit(value)
+            }
+            .show()
+    }
+
+    private fun summarizeCurrentScreen() {
+        val root = window.decorView.rootView
+        val bitmap = Bitmap.createBitmap(
+            root.width.coerceAtLeast(1),
+            root.height.coerceAtLeast(1),
+            Bitmap.Config.ARGB_8888
+        )
+        Canvas(bitmap).let { root.draw(it) }
+
+        tapToSpeak.text = "👁  Summarizing screen..."
+        OpenRouterClient.askVision(
+            bitmap,
+            "Summarize the visible app screen. Identify the main information and UI sections. " +
+                "Keep the summary concise and useful."
+        ) { answer ->
+            runOnUiThread {
+                tapToSpeak.text = "👁  $answer"
+                speak(answer)
+            }
+        }
+    }
+
+    private fun openVisionCameraWithPrompt(prompt: String) {
+        pendingVisionPrompt = prompt
+        openVisionCamera()
     }
 
     private fun setQuickActionClick(view: View, label: String, action: () -> Unit) {
@@ -240,10 +359,11 @@ class MainActivity : AppCompatActivity() {
 
         tapToSpeak.text = "👁  Analyzing image..."
 
-        OpenRouterClient.askVision(
-            bitmap,
-            "Analyze this image and explain what you see. Be concise but useful."
-        ) { answer ->
+        val prompt = pendingVisionPrompt
+            ?: "Analyze this image and explain what you see. Be concise but useful."
+        pendingVisionPrompt = null
+
+        OpenRouterClient.askVision(bitmap, prompt) { answer ->
             runOnUiThread {
                 tapToSpeak.text = "👁  $answer"
                 speak(answer)
@@ -268,49 +388,43 @@ class MainActivity : AppCompatActivity() {
             setPadding(32, 24, 32, 24)
         }
 
-        val builder = AlertDialog.Builder(this)
+        val languages = arrayOf("English", "Hindi", "Assamese", "Bengali")
+        var target = "Hindi"
+
+        AlertDialog.Builder(this)
             .setTitle("🌐 Translate")
             .setView(input)
+            .setSingleChoiceItems(languages, 1) { _, which ->
+                target = languages[which]
+            }
             .setNegativeButton("Cancel", null)
-            .setNeutralButton("Copy", null)
             .setPositiveButton("Translate", null)
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener {
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                        val text = input.text.toString().trim()
+                        if (text.isBlank()) {
+                            input.error = "Enter text first"
+                            return@setOnClickListener
+                        }
 
-        val dialog = builder.create()
+                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                        tapToSpeak.text = "🌐  Translating..."
 
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val text = input.text.toString().trim()
-                if (text.isBlank()) {
-                    input.error = "Enter text first"
-                    return@setOnClickListener
-                }
+                        val prompt =
+                            "Translate the following text to $target. Return only the translated text.\\n\\n$text"
 
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
-                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).isEnabled = false
-                tapToSpeak.text = "🌐  Translating..."
-
-                val prompt =
-                    "Translate the following text to Hindi. Return only the translated text.\n\n$text"
-
-                OpenRouterClient.ask(prompt) { answer ->
-                    runOnUiThread {
-                        dialog.dismiss()
-                        showTranslationResult(answer)
+                        OpenRouterClient.ask(prompt) { answer ->
+                            runOnUiThread {
+                                dialog.dismiss()
+                                showTranslationResult(answer)
+                            }
+                        }
                     }
                 }
+                dialog.show()
             }
-
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                val text = input.text.toString()
-                if (text.isNotBlank()) {
-                    val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Mio Translation", text))
-                    Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-
-        dialog.show()
     }
 
     private fun showTranslationResult(result: String) {

@@ -56,11 +56,6 @@ class RjnxVoiceService : Service() {
 
         startForeground(NOTIFICATION_ID, notification)
 
-        if (!prefs.getBoolean("voice", true)) {
-            stopSelf()
-            return
-        }
-
         Thread {
             try {
                 prepareModel()
@@ -78,6 +73,10 @@ class RjnxVoiceService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!prefs.getBoolean("voice", true)) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         if (intent?.getBooleanExtra(EXTRA_CHAT_LISTEN, false) == true) {
             chatListenRequested = true
             tapRequested = false
@@ -107,9 +106,7 @@ class RjnxVoiceService : Service() {
                 SAMPLE_RATE,
                 """["hey mio", "mio", "[unk]"]"""
             )
-        } else {
-            null
-        }
+        } else null
     }
 
     private fun startAudioLoop() {
@@ -151,7 +148,7 @@ class RjnxVoiceService : Service() {
                     }
                 }
             } else if (prefs.getBoolean("wake_word", true) && wakeRecognizer != null) {
-                val accepted = wakeRecognizer?.acceptWaveForm(buffer, count) == true
+                val accepted = wakeRecognizer.acceptWaveForm(buffer, count)
                 if (accepted) {
                     val text = parseText(wakeRecognizer?.getResult()?.toString() ?: "")
                     if (isMioWake(text)) {
@@ -301,7 +298,6 @@ class RjnxVoiceService : Service() {
 
     private fun updateNotification(text: String) {
         if (!prefs.getBoolean("notifications", true)) return
-
         val manager = getSystemService(NotificationManager::class.java)
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("RJNX AI")

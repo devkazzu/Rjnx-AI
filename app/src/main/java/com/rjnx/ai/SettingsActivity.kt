@@ -21,34 +21,42 @@ class SettingsActivity : AppCompatActivity() {
         getSharedPreferences("mio_settings", Context.MODE_PRIVATE)
     }
 
+    private lateinit var voiceSwitch: Switch
+    private lateinit var wakeSwitch: Switch
+    private lateinit var notificationSwitch: Switch
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.mio_app_settings)
-        bindSettings()
+
+        voiceSwitch = findViewById(R.id.setting_voice)
+        wakeSwitch = findViewById(R.id.setting_wake)
+        notificationSwitch = findViewById(R.id.setting_notifications)
+
+        findViewById<TextView>(R.id.settings_back).setOnClickListener { finish() }
+
+        bindListeners()
+        refreshSwitches()
     }
 
     override fun onResume() {
         super.onResume()
-        if (settingsBound) refreshSwitches()
+        if (::voiceSwitch.isInitialized) refreshSwitches()
     }
 
-    private var settingsBound = false
-
-    private fun bindSettings() {
-        findViewById<TextView>(R.id.settings_back).setOnClickListener { finish() }
-
-        val voiceSwitch = findViewById<Switch>(R.id.setting_voice)
-        val wakeSwitch = findViewById<Switch>(R.id.setting_wake)
-        val notificationSwitch = findViewById<Switch>(R.id.setting_notifications)
-
-        settingsBound = true
-        refreshSwitches(voiceSwitch, wakeSwitch, notificationSwitch)
-
+    private fun bindListeners() {
         voiceSwitch.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean("voice", checked).apply()
 
             if (checked) {
-                startMioService()
+                if (hasMicPermission()) {
+                    startVoiceService()
+                } else {
+                    requestPermissions(
+                        arrayOf(Manifest.permission.RECORD_AUDIO),
+                        REQUEST_MIC
+                    )
+                }
             } else {
                 stopService(Intent(this, RjnxVoiceService::class.java))
             }
@@ -56,26 +64,20 @@ class SettingsActivity : AppCompatActivity() {
 
         wakeSwitch.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean("wake_word", checked).apply()
+
             if (checked && prefs.getBoolean("voice", true)) {
-                startMioService()
+                if (hasMicPermission()) startVoiceService()
+                else requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_MIC)
             }
         }
 
         notificationSwitch.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean("notifications", checked).apply()
-            if (checked) {
-                requestNotificationPermissionIfNeeded()
-            } else {
-                Toast.makeText(
-                    this,
-                    "Assistant notification updates are off.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+            if (checked) requestNotificationPermissionIfNeeded()
         }
 
         findViewById<ViewGroup>(R.id.setting_language).setOnClickListener {
-            showLanguageVoiceDialog()
+            showLanguageDialog()
         }
 
         findViewById<ViewGroup>(R.id.setting_permissions).setOnClickListener {
@@ -87,69 +89,55 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun refreshSwitches(
-        voice: Switch = findViewById(R.id.setting_voice),
-        wake: Switch = findViewById(R.id.setting_wake),
-        notifications: Switch = findViewById(R.id.setting_notifications)
-    ) {
-        voice.setOnCheckedChangeListener(null)
-        wake.setOnCheckedChangeListener(null)
-        notifications.setOnCheckedChangeListener(null)
+    private fun refreshSwitches() {
+        voiceSwitch.setOnCheckedChangeListener(null)
+        wakeSwitch.setOnCheckedChangeListener(null)
+        notificationSwitch.setOnCheckedChangeListener(null)
 
-        voice.isChecked = prefs.getBoolean("voice", true)
-        wake.isChecked = prefs.getBoolean("wake_word", true)
-        notifications.isChecked = prefs.getBoolean("notifications", true)
+        voiceSwitch.isChecked = prefs.getBoolean("voice", true)
+        wakeSwitch.isChecked = prefs.getBoolean("wake_word", true)
+        notificationSwitch.isChecked = prefs.getBoolean("notifications", true)
+
+        bindListeners()
     }
 
-    private fun startMioService() {
-        val intent = Intent(this, RjnxVoiceService::class.java)
+    private fun hasMicPermission(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+
+    private fun startVoiceService() {
         try {
+            val intent = Intent(this, RjnxVoiceService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(intent)
             } else {
                 startService(intent)
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Toast.makeText(this, "Could not start Mio voice service.", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun showLanguageVoiceDialog() {
+    private fun showLanguageDialog() {
         val languages = arrayOf(
-            "English (India)",
-            "English (US)",
-            "Hindi (India)"
+            "English (India)" to "en-IN",
+            "English (US)" to "en-US",
+            "Hindi (India)" to "hi-IN",
+            "Assamese (India)" to "as-IN",
+            "Bengali (India)" to "bn-IN"
         )
 
-        val saved = prefs.getString("tts_language", "en-IN") ?: "en-IN"
-        val selected = when (saved) {
-            "en-US" -> 1
-            "hi-IN" -> 2
-            else -> 0
-        }
+        val current = prefs.getString("tts_language", "en-IN") ?: "en-IN"
+        val selected = languages.indexOfFirst { it.second == current }.coerceAtLeast(0)
 
         AlertDialog.Builder(this)
             .setTitle("Language & Voice")
-            .setSingleChoiceItems(languages, selected) { dialog, which ->
-                val tag = when (which) {
-                    1 -> "en-US"
-                    2 -> "hi-IN"
-                    else -> "en-IN"
-                }
-
-                prefs.edit().putString("tts_language", tag).apply()
-
-                val locale = Locale.forLanguageTag(tag)
-                var tempTts: android.speech.tts.TextToSpeech? = null
-                tempTts = android.speech.tts.TextToSpeech(this) { status ->
-                    if (status == android.speech.tts.TextToSpeech.SUCCESS) {
-                        tempTts?.language = locale
-                        tempTts?.stop()
-                        tempTts?.shutdown()
-                    }
-                }
-
-                Toast.makeText(this, "${languages[which]} selected", Toast.LENGTH_SHORT).show()
+            .setSingleChoiceItems(languages.map { it.first }.toTypedArray(), selected) { dialog, which ->
+                prefs.edit().putString("tts_language", languages[which].second).apply()
+                Toast.makeText(this, "${languages[which].first} selected", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
             }
             .setNegativeButton("Cancel", null)
@@ -177,6 +165,35 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == REQUEST_MIC) {
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+                if (prefs.getBoolean("voice", true)) startVoiceService()
+            } else {
+                voiceSwitch.setOnCheckedChangeListener(null)
+                voiceSwitch.isChecked = false
+                prefs.edit().putBoolean("voice", false).apply()
+                bindListeners()
+                Toast.makeText(this, "Microphone permission is required for Voice Assistant.", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        if (requestCode == REQUEST_NOTIFICATIONS &&
+            grantResults.firstOrNull() != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationSwitch.setOnCheckedChangeListener(null)
+            notificationSwitch.isChecked = false
+            prefs.edit().putBoolean("notifications", false).apply()
+            bindListeners()
+        }
+    }
+
     private fun showAbout() {
         val version = try {
             packageManager.getPackageInfo(packageName, 0).versionName
@@ -187,17 +204,18 @@ class SettingsActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Mio")
             .setMessage(
-                "Mio Personal AI Assistant\n\n" +
-                    "Version $version\n" +
-                    "RJNX AI\n\n" +
-                    "Offline voice recognition powered by Vosk.\n" +
-                    "AI responses powered by OpenRouter."
+                "Mio Personal AI Assistant\\n\\n" +
+                    "Version $version\\n" +
+                    "RJNX AI\\n\\n" +
+                    "Offline voice recognition: Vosk\\n" +
+                    "AI: OpenRouter"
             )
             .setPositiveButton("OK", null)
             .show()
     }
 
     companion object {
-        private const val REQUEST_NOTIFICATIONS = 801
+        private const val REQUEST_MIC = 801
+        private const val REQUEST_NOTIFICATIONS = 802
     }
 }
