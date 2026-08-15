@@ -60,6 +60,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         tapToSpeak.text = "🎙  Heard: $command"
+
+        // Safe local commands are executed directly.
+        // Unknown commands continue to the AI.
+        if (MioCommandRouter.execute(this, command)) {
+            speak("Done.")
+            tapToSpeak.text = "✅  Done"
+            return
+        }
+
         askMio(command)
     }
 
