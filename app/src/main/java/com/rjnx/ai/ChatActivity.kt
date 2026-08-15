@@ -338,10 +338,8 @@ class ChatActivity : AppCompatActivity() {
         }
 
         val avatar = ImageView(this).apply {
-            setImageResource(R.drawable.ic_mio)
+            setImageResource(R.drawable.mio_chat_avatar)
             scaleType = ImageView.ScaleType.CENTER_CROP
-            background = getDrawable(R.drawable.mio_chat_avatar_circle)
-            clipToOutline = true
             isClickable = false
             contentDescription = "Mio"
         }
