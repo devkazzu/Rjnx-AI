@@ -62,10 +62,14 @@ object MioCommandRouter {
 
     private fun speakLocal(context: Context, text: String): Boolean {
         return try {
-            context.startActivity(Intent(context, MainActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                putExtra("MIO_LOCAL_REPLY", text)
-            })
+            if (context is MainActivity) {
+                context.showLocalReply(text)
+            } else {
+                context.startActivity(Intent(context, MainActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    putExtra("MIO_LOCAL_REPLY", text)
+                })
+            }
             true
         } catch (_: Exception) { false }
     }

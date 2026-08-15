@@ -22,6 +22,8 @@ class RjnxVoiceService : Service() {
     companion object {
         const val ACTION_CHAT_VOICE_RESULT = "com.rjnx.ai.CHAT_VOICE_RESULT"
         const val EXTRA_CHAT_LISTEN = "MIO_CHAT_LISTEN"
+        const val EXTRA_VOICE_COMMAND = "MIO_VOICE_COMMAND"
+        const val ACTION_TAP_VOICE_RESULT = "com.rjnx.ai.TAP_VOICE_RESULT"
 
         private const val CHANNEL_ID = "rjnx_background"
         private const val NOTIFICATION_ID = 3001
@@ -62,7 +64,6 @@ class RjnxVoiceService : Service() {
 
                 if (chatListenRequested || tapRequested) {
                     enterCommandMode()
-                    if (tapRequested && !chatListenRequested) announceWake()
                 }
 
                 startAudioLoop()
@@ -88,7 +89,6 @@ class RjnxVoiceService : Service() {
             chatListenRequested = false
             if (model != null) {
                 enterCommandMode()
-                announceWake()
             }
         }
 
@@ -175,18 +175,12 @@ class RjnxVoiceService : Service() {
         })
         chatListenRequested = false
         tapRequested = false
+        stopAudioLoop()
+        stopSelf()
     }
 
     private fun announceWake() {
         updateNotification("Mio heard you — listening…")
-
-        val intent = Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            putExtra("MIO_WAKE", true)
-            putExtra("MIO_COMMAND", "")
-        }
-
-        try { startActivity(intent) } catch (_: Exception) {}
     }
 
     private fun enterCommandMode() {
@@ -203,22 +197,33 @@ class RjnxVoiceService : Service() {
         commandMode = false
         commandRecognizer?.close()
         commandRecognizer = null
+
+        if (tapRequested || chatListenRequested || !prefs.getBoolean("wake_word", true)) {
+            stopAudioLoop()
+            stopSelf()
+            return
+        }
+
         wakeRecognizer?.reset()
-        chatListenRequested = false
-        tapRequested = false
         updateNotification("Mio is ready in the background")
     }
 
     private fun deliverCommand(command: String) {
         updateNotification("Mio heard you")
 
-        val intent = Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            putExtra("MIO_WAKE", true)
-            putExtra("MIO_COMMAND", command)
+        if (tapRequested) {
+            sendBroadcast(Intent(ACTION_TAP_VOICE_RESULT).apply {
+                setPackage(packageName)
+                putExtra(EXTRA_VOICE_COMMAND, command)
+            })
+        } else {
+            val intent = Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                putExtra("MIO_WAKE", true)
+                putExtra("MIO_COMMAND", command)
+            }
+            try { startActivity(intent) } catch (_: Exception) {}
         }
-
-        try { startActivity(intent) } catch (_: Exception) {}
     }
 
     private fun isMioWake(text: String): Boolean {

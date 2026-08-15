@@ -2,8 +2,12 @@ package com.rjnx.ai
 
 import android.Manifest
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import java.io.File
 import android.graphics.Canvas
 import android.provider.MediaStore
 import android.content.pm.PackageManager
@@ -23,6 +27,8 @@ import android.content.ClipboardManager
 import android.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import androidx.activity.result.contract.ActivityResultContracts
 import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
@@ -31,6 +37,57 @@ class MainActivity : AppCompatActivity() {
     private var tts: TextToSpeech? = null
     private var isTtsReady = false
     private var pendingVisionPrompt: String? = null
+
+
+    private var pendingVisionUri: Uri? = null
+    private var pendingPermissionCommand: String? = null
+
+    private val tapVoiceReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val command = intent?.getStringExtra(RjnxVoiceService.EXTRA_VOICE_COMMAND).orEmpty().trim()
+            if (command.isNotBlank()) {
+                handleVoiceCommand(command)
+            }
+        }
+    }
+
+    private val visionCameraLauncher =
+        registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            val uri = pendingVisionUri
+            pendingVisionUri = null
+
+            if (!success || uri == null) {
+                tapToSpeak.text = "👁  Vision cancelled"
+                return@registerForActivityResult
+            }
+
+            val bitmap = try {
+                contentResolver.openInputStream(uri)?.use { input ->
+                    BitmapFactory.decodeStream(input)
+                }
+            } catch (_: Exception) {
+                null
+            }
+
+            if (bitmap == null) {
+                Toast.makeText(this, "Could not read the captured image", Toast.LENGTH_SHORT).show()
+                return@registerForActivityResult
+            }
+
+            tapToSpeak.text = "👁  Analyzing image..."
+            val prompt = pendingVisionPrompt
+                ?: "Analyze this image and explain what you see. Be concise but useful."
+            pendingVisionPrompt = null
+
+            OpenRouterClient.askVision(bitmap, prompt) { answer ->
+                bitmap.recycle()
+                runOnUiThread {
+                    tapToSpeak.text = "👁  $answer"
+                    speak(answer)
+                    try { contentResolver.delete(uri, null, null) } catch (_: Exception) {}
+                }
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,6 +160,21 @@ class MainActivity : AppCompatActivity() {
         handleVoiceIntent(intent)
     }
 
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(
+            this,
+            tapVoiceReceiver,
+            IntentFilter(RjnxVoiceService.ACTION_TAP_VOICE_RESULT),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    override fun onStop() {
+        unregisterReceiver(tapVoiceReceiver)
+        super.onStop()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -112,8 +184,7 @@ class MainActivity : AppCompatActivity() {
     private fun handleVoiceIntent(intent: Intent) {
         val localReply = intent.getStringExtra("MIO_LOCAL_REPLY")
         if (!localReply.isNullOrBlank()) {
-            tapToSpeak.text = "🤖  $localReply"
-            speak(localReply)
+            showLocalReply(localReply)
             intent.removeExtra("MIO_LOCAL_REPLY")
             return
         }
@@ -121,20 +192,30 @@ class MainActivity : AppCompatActivity() {
         if (!intent.getBooleanExtra("MIO_WAKE", false)) return
 
         val command = intent.getStringExtra("MIO_COMMAND").orEmpty().trim()
-
         if (command.isBlank()) {
             tapToSpeak.text = "🎙  Listening..."
             return
         }
 
+        handleVoiceCommand(command)
+    }
+
+    fun showLocalReply(text: String) {
+        tapToSpeak.text = "🤖  $text"
+        speak(text)
+    }
+
+    private fun handleVoiceCommand(command: String) {
         tapToSpeak.text = "🎙  Heard: $command"
+        pendingPermissionCommand = command
 
         if (MioCommandRouter.execute(this, command)) {
-            speak("Done.")
+            pendingPermissionCommand = null
             tapToSpeak.text = "✅  Done"
             return
         }
 
+        pendingPermissionCommand = null
         askMio(command)
     }
 
@@ -338,37 +419,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openVisionCamera() {
-        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        try {
-            startActivityForResult(intent, REQUEST_VISION_CAMERA)
-        } catch (_: Exception) {
-            Toast.makeText(this, "Camera app not available", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (requestCode != REQUEST_VISION_CAMERA || resultCode != RESULT_OK) return
-
-        val bitmap = data?.extras?.get("data") as? Bitmap
-        if (bitmap == null) {
-            Toast.makeText(this, "Could not get the captured image", Toast.LENGTH_SHORT).show()
+        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        if (cameraIntent.resolveActivity(packageManager) == null) {
+            Toast.makeText(this, "No camera app available", Toast.LENGTH_SHORT).show()
             return
         }
 
-        tapToSpeak.text = "👁  Analyzing image..."
-
-        val prompt = pendingVisionPrompt
-            ?: "Analyze this image and explain what you see. Be concise but useful."
-        pendingVisionPrompt = null
-
-        OpenRouterClient.askVision(bitmap, prompt) { answer ->
-            runOnUiThread {
-                tapToSpeak.text = "👁  $answer"
-                speak(answer)
-            }
+        val imageFile = try {
+            File.createTempFile("mio_vision_", ".jpg", cacheDir)
+        } catch (_: Exception) {
+            Toast.makeText(this, "Could not prepare camera", Toast.LENGTH_SHORT).show()
+            return
         }
+
+        val uri = try {
+            FileProvider.getUriForFile(this, "${BuildConfig.APPLICATION_ID}.fileprovider", imageFile)
+        } catch (_: Exception) {
+            Toast.makeText(this, "Camera storage setup failed", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        pendingVisionUri = uri
+        visionCameraLauncher.launch(uri)
     }
 
     private fun openCamera() {
@@ -460,6 +532,17 @@ class MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
+        if ((requestCode == REQUEST_CONTACTS || requestCode == REQUEST_CALL) &&
+            grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingPermissionCommand?.let {
+                val command = it
+                pendingPermissionCommand = null
+                handleVoiceCommand(command)
+            }
+        }
+
         if (requestCode == REQUEST_AUDIO &&
             grantResults.isNotEmpty() &&
             grantResults[0] == PackageManager.PERMISSION_GRANTED
@@ -477,6 +560,8 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val REQUEST_AUDIO = 401
+        private const val REQUEST_CONTACTS = 803
+        private const val REQUEST_CALL = 804
         private const val REQUEST_VISION_CAMERA = 602
     }
 }

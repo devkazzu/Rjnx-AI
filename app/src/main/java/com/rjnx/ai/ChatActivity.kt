@@ -154,6 +154,12 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun startChatVoiceRecognition() {
+        val settings = getSharedPreferences("mio_settings", Context.MODE_PRIVATE)
+        if (!settings.getBoolean("voice", true)) {
+            Toast.makeText(this, "Voice Assistant is OFF in Settings", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         if (ContextCompat.checkSelfPermission(
                 this,
                 android.Manifest.permission.RECORD_AUDIO
