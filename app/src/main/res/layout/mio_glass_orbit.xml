@@ -72,40 +72,44 @@
             android:textSize="17sp" />
 
         <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="300dp"
-            android:layout_marginTop="8dp">
+    android:layout_width="match_parent"
+    android:layout_height="300dp"
+    android:layout_marginTop="8dp">
 
-            <View
-                android:layout_width="250dp"
-                android:layout_height="250dp"
-                android:layout_gravity="center"
-                android:background="@drawable/mio_orb" />
+    <com.rjnx.MioOrbView
+        android:id="@+id/mio_orb_view"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:layout_gravity="center" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:text="Mio"
-                android:textColor="#FFFFFF"
-                android:textSize="43sp" />
-        </FrameLayout>
+    <TextView
+        android:id="@+id/mio_orb_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="Mio"
+        android:textColor="#FFFFFFFF"
+        android:textSize="43sp"
+        android:fontFamily="sans" />
 
-        <TextView
-            android:id="@+id/btn_tap_to_speak"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:background="@drawable/mio_glass_button"
-            android:paddingStart="30dp"
-            android:paddingTop="13dp"
-            android:paddingEnd="30dp"
-            android:paddingBottom="13dp"
-            android:text="🎙  Tap to speak"
-            android:textColor="#FFFFFF"
-            android:textSize="17sp"
-            android:clickable="true"
-            android:focusable="true" />
+</FrameLayout>
+
+<TextView
+    android:id="@+id/btn_tap_to_speak"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center_horizontal"
+    android:layout_marginTop="0dp"
+    android:background="@drawable/mio_tap_to_speak"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center"
+    android:text="🎙  Tap to speak"
+    android:textColor="#FFFFFFFF"
+    android:textSize="17sp"
+    android:minHeight="56dp"
+    android:fontFamily="sans" />
+
 
         <GridLayout
             android:layout_width="match_parent"
