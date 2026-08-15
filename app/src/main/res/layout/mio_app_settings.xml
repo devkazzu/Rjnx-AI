@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#080A12"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="22dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:paddingBottom="20dp">
+
+            <TextView
+                android:id="@+id/settings_back"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:text="‹"
+                android:textColor="#FFFFFF"
+                android:textSize="34sp"
+                android:clickable="true"
+                android:focusable="true"/>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:paddingStart="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Mio Settings"
+                    android:textColor="#FFFFFF"
+                    android:textSize="27sp"
+                    android:textStyle="bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Customize your assistant"
+                    android:textColor="#8E95AA"
+                    android:textSize="14sp"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ASSISTANT"
+            android:textColor="#6D76FF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:paddingBottom="8dp"/>
+
+        <Switch
+            android:id="@+id/setting_voice"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="Voice Assistant"
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:paddingHorizontal="6dp"/>
+
+        <Switch
+            android:id="@+id/setting_wake"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="Hey Mio Wake Word"
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:paddingHorizontal="6dp"/>
+
+        <Switch
+            android:id="@+id/setting_notifications"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="Assistant Notifications"
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:paddingHorizontal="6dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="GENERAL"
+            android:textColor="#6D76FF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:paddingTop="22dp"
+            android:paddingBottom="8dp"/>
+
+        <LinearLayout
+            android:id="@+id/setting_language"
+            android:layout_width="match_parent"
+            android:layout_height="66dp"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:paddingHorizontal="6dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Language &amp; Voice"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="English (India) • Offline Vosk"
+                android:textColor="#8E95AA"
+                android:textSize="13sp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/setting_permissions"
+            android:layout_width="match_parent"
+            android:layout_height="66dp"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:paddingHorizontal="6dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Permissions"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Microphone and app permissions"
+                android:textColor="#8E95AA"
+                android:textSize="13sp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/setting_about"
+            android:layout_width="match_parent"
+            android:layout_height="66dp"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:paddingHorizontal="6dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="About Mio"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Version and assistant information"
+                android:textColor="#8E95AA"
+                android:textSize="13sp"/>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
