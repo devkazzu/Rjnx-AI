@@ -54,4 +54,36 @@
         <item name="android:textColor">#C8D1FF</item>
         <item name="android:textSize">30sp</item>
     </style>
+    <style name="MioNavCell">
+    <item name="android:layout_width">0dp</item>
+    <item name="android:layout_height">68dp</item>
+    <item name="android:layout_weight">1</item>
+    <item name="android:gravity">center</item>
+    <item name="android:orientation">vertical</item>
+    <item name="android:padding">5dp</item>
+</style>
+
+<style name="MioNavCellSelected">
+    <item name="android:layout_width">0dp</item>
+    <item name="android:layout_height">68dp</item>
+    <item name="android:layout_weight">1</item>
+    <item name="android:gravity">center</item>
+    <item name="android:orientation">vertical</item>
+    <item name="android:padding">5dp</item>
+    <item name="android:background">@drawable/mio_nav_selected</item>
+</style>
+
+<style name="MioNavIcon">
+    <item name="android:layout_width">28dp</item>
+    <item name="android:layout_height">28dp</item>
+    <item name="android:tint">#C6D0F8</item>
+</style>
+
+<style name="MioNavText">
+    <item name="android:layout_width">wrap_content</item>
+    <item name="android:layout_height">wrap_content</item>
+    <item name="android:layout_marginTop">3dp</item>
+    <item name="android:textColor">#B9C5F0</item>
+    <item name="android:textSize">11sp</item>
+</style>
 </resources>
