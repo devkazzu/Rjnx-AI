@@ -1,6 +1,7 @@
 package com.rjnx.ai
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.provider.MediaStore
@@ -36,7 +37,7 @@ class MainActivity : AppCompatActivity() {
         tts = TextToSpeech(this) { status ->
             isTtsReady = status == TextToSpeech.SUCCESS
             if (isTtsReady) {
-                tts?.language = Locale.US
+                tts?.language = getSelectedLocale()
                 tts?.setSpeechRate(0.96f)
                 tts?.setPitch(1.0f)
             }
@@ -136,6 +137,12 @@ class MainActivity : AppCompatActivity() {
                 speak(answer)
             }
         }
+    }
+
+    private fun getSelectedLocale(): Locale {
+        val tag = getSharedPreferences("mio_settings", Context.MODE_PRIVATE)
+            .getString("tts_language", "en-IN") ?: "en-IN"
+        return Locale.forLanguageTag(tag)
     }
 
     private fun speak(text: String) {

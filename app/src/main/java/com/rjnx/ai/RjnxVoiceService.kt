@@ -38,6 +38,10 @@ class RjnxVoiceService : Service() {
     private var chatListenRequested = false
     private var tapRequested = false
 
+    private val prefs by lazy {
+        getSharedPreferences("mio_settings", MODE_PRIVATE)
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
@@ -51,6 +55,11 @@ class RjnxVoiceService : Service() {
             .build()
 
         startForeground(NOTIFICATION_ID, notification)
+
+        if (!prefs.getBoolean("voice", true)) {
+            stopSelf()
+            return
+        }
 
         Thread {
             try {
@@ -92,11 +101,15 @@ class RjnxVoiceService : Service() {
         if (!modelDir.exists()) copyAssetFolder(MODEL_DIR, modelDir)
 
         model = Model(modelDir.absolutePath)
-        wakeRecognizer = Recognizer(
-            model,
-            SAMPLE_RATE,
-            """["hey mio", "mio", "[unk]"]"""
-        )
+        wakeRecognizer = if (prefs.getBoolean("wake_word", true)) {
+            Recognizer(
+                model,
+                SAMPLE_RATE,
+                """["hey mio", "mio", "[unk]"]"""
+            )
+        } else {
+            null
+        }
     }
 
     private fun startAudioLoop() {
@@ -137,7 +150,7 @@ class RjnxVoiceService : Service() {
                         enterWakeMode()
                     }
                 }
-            } else {
+            } else if (prefs.getBoolean("wake_word", true) && wakeRecognizer != null) {
                 val accepted = wakeRecognizer?.acceptWaveForm(buffer, count) == true
                 if (accepted) {
                     val text = parseText(wakeRecognizer?.getResult()?.toString() ?: "")
@@ -287,6 +300,8 @@ class RjnxVoiceService : Service() {
     }
 
     private fun updateNotification(text: String) {
+        if (!prefs.getBoolean("notifications", true)) return
+
         val manager = getSystemService(NotificationManager::class.java)
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("RJNX AI")
